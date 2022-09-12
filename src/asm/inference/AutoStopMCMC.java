@@ -9,10 +9,11 @@ import java.util.ArrayList;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.inference.Logger;
 import beast.base.inference.MCMC;
 import beast.base.evolution.tree.Node;
-import beast.base.util.Randomizer;
+import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.parser.XMLParser;
 import beast.base.parser.XMLParserException;
@@ -20,38 +21,36 @@ import beast.base.parser.XMLProducer;
 
 
 
-@Description("Runs multiple MCMC chains in parallel and reports Rubin-Gelman statistic while running the chain " +
-		"for each item in the first log file as well as the maximum difference in clade probability for every " +
-		"pair of chains. " +
-		"" +
-		"Note that log file names should have $(seed) in their name so " +
-		"that the first chain uses the actual seed in the file name and all subsequent chains add one to it." +
-		"Furthermore, the log and tree log should have the same sample frequency.")
+@Description("Runs multiple MCMC chains in parallel and reports "
+		+ "1. Rubin-Gelman statistic while running the chain for each item in the first log file, "
+		+ "2. The maximum difference in clade probability for every pair of chains, "
+		+ "3. Tree distance stopping criterion. " +
+		"Note that the log and tree log should have the same sample frequency.")
 public class AutoStopMCMC extends MCMC {
-	public Input<Integer> m_nrOfChains = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
+	public Input<Integer> nrOfChainsInput = new Input<>("chains", "number of chains to run in parallel (default 2)", 2);
+	public Input<List<PairewiseConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	MCMC [] m_chains;
+	
 	/** threads for running MCMC chains **/
 	Thread [] m_threads;
+	
 	/** keep track of time taken between logs to estimate speed **/
     long m_nStartLogTime;
-	/** tables of logs, one for each thread + one for the total**/
-	List<Double[]>[] m_logTables;
+	
+    /** tables of logs, one for each thread + one for the total**/
+	List<Double[]>[] m_logLines;
+	
 	/** last line for which log is reported for all chains */
 	int m_nLastReported = 0;
-	/** pre-calculated sum of itmes and sum of itmes squared for all threads and all items */
-	double [][] m_fSums;
-	double [][] m_fSquaredSums;
 	
-	/** for each thread, counts the number of trees read from the log **/
-	//int [] m_nTrees;
-	/** maximum difference of clade probabilities for chain 1 & 2 **/
-	List<Double> m_fMaxCladeProbDiffs;
-	/** for each thread, keeps track of the frequency of clades **/
-	HashMap<String, Integer> [] m_cladeMaps;
-	/** total nr of clades in a tree **/
-	int m_nClades = 1;
+	
+    /** tables of trees, one for each thread + one for the total **/
+	List<Node> [] trees;
+	
+	List<PairewiseConvergenceCriterion> stoppingCriteria;
+	
 
 	/** index of log and tree log among the MCMC loggers**/
 	int m_iTreeLog = 0;
@@ -59,15 +58,30 @@ public class AutoStopMCMC extends MCMC {
 
 	@Override
 	public void initAndValidate() {
-		m_chains = new MCMC[m_nrOfChains.get()];
-
+		m_chains = new MCMC[nrOfChainsInput.get()];
+		stoppingCriteria = new ArrayList<>();
+		stoppingCriteria.addAll(stoppingCriterionInput.get());
+		if (stoppingCriteria.size() == 0) {
+			Log.warning("=========================");
+			Log.warning("=========================");
+			Log.warning("No stoppingCriteria specified -- will run chain for chainLength steps without checking for convergence");
+			Log.warning("=========================");
+			Log.warning("=========================");
+		}
+		stoppingCriterionInput.get().clear();
+		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
+			stoppingCriterium.setup(m_chains.length);
+		}
+		
 		// the difference between the various chains is
-		// 1. it runs an MCMC, not a  MultiplMCMC
+		// 1. it runs an MCMC, not an AutoStopMCMC
 		// 2. remove chains attribute
 		// 3. output logs change for every chain
 		// 4. log to stdout is removed to prevent clutter on stdout
 		String sXML = new XMLProducer().toXML(this);
 		sXML = sXML.replaceAll("chains=[^ /]*", "");
+		sXML = sXML.replaceAll("targetESS=[^ /]*", "");
+		
 		String sMultiMCMC = this.getClass().getName();
 		while (sMultiMCMC.length() > 0) {
 			sXML = sXML.replaceAll("\\b"+sMultiMCMC+"\\b", MCMC.class.getName());
@@ -77,16 +91,15 @@ public class AutoStopMCMC extends MCMC {
 				sMultiMCMC = "";
 			}
 		}
-		long nSeed = Randomizer.getSeed();
 		
 		// create new chains
 		XMLParser parser = new XMLParser();
 		for (int i = 0; i < m_chains.length; i++) {
 			String sXML2 = sXML;
-			sXML2 = sXML2.replaceAll("\\$\\(seed\\)", nSeed+i+"");
+			sXML2 = sXML2.replaceAll("fileName=\"", "fileName=\"chain" + i+ "-");
 			if (sXML2.equals(sXML)) {
-				// Uh oh, no seed in log name => logs will overwrite
-				throw new IllegalArgumentException("Use $(seed) in log file name to guarantee log files do not overwrite");
+				// Uh oh, no loggers to file
+				throw new IllegalArgumentException("Use file loggers, otherwise there are no trace a tree logs to track");
 			}
 			try {
 				m_chains[i] = (MCMC) parser.parseFragment(sXML2, true);
@@ -118,6 +131,17 @@ public class AutoStopMCMC extends MCMC {
 	@SuppressWarnings("unchecked")
 	@Override 
 	public void run() throws IOException {
+		// memory for trees & tree distances
+		trees = new List[m_chains.length];
+		for (int i = 0; i < m_chains.length; i++) {
+			trees[i] = new ArrayList<>();
+		}
+
+		m_logLines = new List[m_chains.length + 1];
+		for (int i = 0; i < m_chains.length+1; i++) {
+			m_logLines[i] = new ArrayList<Double[]>();
+		}
+
 		// start threads with individual chains here.
 		m_threads = new Thread[m_chains.length];
 		int k = 0;
@@ -137,18 +161,9 @@ public class AutoStopMCMC extends MCMC {
 			m_threads[k].start();
 			k++;
 		}
-		// start a thread to tail all log files
-		m_logTables = new List[m_threads.length + 1];
-		for (int i = 0; i < m_threads.length+1; i++) {
-			m_logTables[i] = new ArrayList<Double[]>();
-		}
-		//m_nTrees = new int[m_threads.length];
-		m_fMaxCladeProbDiffs = new ArrayList<>();
-		m_cladeMaps = new HashMap[m_threads.length];
-		for (int i = 0; i < m_threads.length; i++) {
-			m_cladeMaps[i] = new HashMap<String, Integer>();
-		}
+
 		new LogWatcherThread().start();
+		
 		// wait for the chains to finish
         m_nStartLogTime = System.currentTimeMillis();
 		for (Thread thread : m_threads) {
@@ -175,7 +190,7 @@ public class AutoStopMCMC extends MCMC {
 			try {
 				int nThreads = m_chains.length;
 				/* file handle pairs; two for each thread, 
-				 * even numbered files are for the log file, odd numbere for the tree file */
+				 * even numbered files are for the log file, odd numbers for the tree file */
 				BufferedReader [] fin = new BufferedReader[nThreads*2];
 				int nFilesOpened = 0;
 
@@ -185,7 +200,7 @@ public class AutoStopMCMC extends MCMC {
 				while (nFilesOpened < nThreads*2) {
 					for (int i = 0; i < nThreads*2; i++) {
 						if (fin[i] == null) {
-							String sFileName = m_chains[i/2].loggersInput.get().get(i%2==0?m_iLog:m_iTreeLog).fileNameInput.get(); 
+							String sFileName = m_chains[i/2].loggersInput.get().get(i%2==0 ? m_iLog : m_iTreeLog).fileNameInput.get(); 
 							fin[i] = new BufferedReader(new FileReader(sFileName));
 							if (fin[i] != null) {
 								nFilesOpened++;
@@ -205,7 +220,7 @@ public class AutoStopMCMC extends MCMC {
 						boolean [] bDone = new boolean[nThreads*2];
 						for (int i = 0; i < nThreads*2; i++) {
 							if (!bDone[i]) {
-								boolean bLineRead = (i%2==0?readLogLines(i/2, fin[i]) : readTreeLogLines(i/2, fin[i]));
+								boolean bLineRead = (i%2==0?readLogLines(i/2, fin[i]) : readTreeLogLine(i/2, fin[i]));
 								if (bLineRead) {
 									nLinesRead++;
 									bDone[i] = true;
@@ -218,14 +233,13 @@ public class AutoStopMCMC extends MCMC {
 						}
 					}
 					
-					double fMaxCladeProbDiff = 0;
 					for (int i = 0; i < nThreads; i++) {
-						for (int k = 0; k < nThreads; k++) {
-							fMaxCladeProbDiff = Math.max(fMaxCladeProbDiff, calcMaxCladeDifference(i, k));
+						for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
+							crit.process(i, m_logLines[i].get(m_nLastReported), trees[i].get(m_nLastReported));
 						}
 					}
-					m_fMaxCladeProbDiffs.add(fMaxCladeProbDiff);
-					calcGRStats(m_nLastReported);
+					
+					
 					m_nLastReported++;				
 				}
 			} catch (Exception e) {
@@ -252,7 +266,7 @@ public class AutoStopMCMC extends MCMC {
 				for (int i = 0; i < nItems; i++) {
 					logLine[i] = Double.parseDouble(sStrs[i]);
 				}
-				processLogLine(iThread, logLine);
+				m_logLines[iThread].add(logLine);
 			} catch (Exception e) {
 				//ignore, probably a parse errors
 				if (iThread == 0) {
@@ -267,284 +281,40 @@ public class AutoStopMCMC extends MCMC {
 		return false;
 	} // readLogLine
 
-	/** Add log line to log table, and check whether other threads are up to date
-	 * enough to report on a sample. 
-	 */
-	synchronized void processLogLine(int iThread, Double[] logLine) {
-		m_logTables[iThread].add(logLine);
 
-//		// can we calculate the Gelman Rubin statistic yet?
-//		while (true) {
-//			for (int iThread2 = 0; iThread2 < m_threads.length; iThread2++) {
-//				if (m_logTables[iThread2].size() <= m_nLastReported) {
-//					// not enough log lines processed yet
-//					return;
-//				}
-//				if (m_fMaxCladeProbDiffs.size() <= m_nLastReported) {
-////				if (m_nTrees[iThread2] < m_nLastReported) {
-//					// not enough tree lines processed yet
-//					return;
-//				}
-//			}
-//			calcGRStats(m_nLastReported);
-//			m_nLastReported++;
-//		}
-	}
 
 	/** read a single tree from the tree log file, return true if successful **/
-	boolean readTreeLogLines(int iThread, BufferedReader fin) {
-		try {
-			//while(true) {
-				String sStr = null;
-				do {
-					sStr = fin.readLine();
-					if (sStr == null) {
-						return false;
-					}
-				} while (!sStr.matches("tree STATE.*")); // ignore non-tree lines
-				sStr = sStr.substring(sStr.indexOf("("));
-				TreeParser parser = new TreeParser();
-				parser.offsetInput.setValue(0, parser);
-				Node tree = parser.parseNewick(sStr);
-				List<String> sClades = new ArrayList<String>();
-				m_nClades = traverse(tree, sClades).length;
-				HashMap<String, Integer> cladeMap = m_cladeMaps[iThread];
-				for (String sClade : sClades) {
-					if (cladeMap.containsKey(sClade)) {
-						cladeMap.put(sClade, cladeMap.get(sClade) + 1);
-					} else {
-						cladeMap.put(sClade, 1);
-					}
+	boolean readTreeLogLine(int iThread, BufferedReader fin) {
+		String sStr = null;
+		do {
+			try {
+				sStr = fin.readLine();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			if (sStr == null) {
+				try {
+					// wait 2.5 seconds till tree becomes available
+					Thread.sleep(2500);
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-				//m_nTrees[iThread]++;
-				return true;
-			//}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return false;
+			}
+		} while (!sStr.matches("tree STATE.*")); // ignore non-tree lines
+
+		sStr = sStr.substring(sStr.indexOf("("));
+		TreeParser parser = new TreeParser();
+		parser.offsetInput.setValue(0, parser);
+		Node root = parser.parseNewick(sStr);
+		trees[iThread].add(root);
+		return true;
 	} // readTreeLogLine
 
-	/** get clades from tree and store them in a list in String format **/
-	int [] traverse(Node node, List<String> sClades) {
-		int [] clade = null;
-		if (node.isLeaf()) {
-			clade = new int[1];
-			clade[0] = node.getNr();
-		} else {
-			int [] leftClade = traverse(node.getLeft(), sClades);
-			int [] rightClade = traverse(node.getRight(), sClades);
-			
-			// merge clade with rightClade
-			clade = new int[leftClade.length + rightClade.length];
-			int i = 0, iLeft = 0, iRight = 0;
-			while (i < clade.length) {
-				if (leftClade[iLeft] < rightClade[iRight]) {
-					clade[i] = leftClade[iLeft++];
-					if (iLeft == leftClade.length) {
-						while (iRight < rightClade.length) {
-							clade[++i] = rightClade[iRight++];
-						}
-					}
-				} else {
-					clade[i] = rightClade[iRight++]; 
-					if (iRight == rightClade.length) {
-						while (iLeft < leftClade.length) {
-							clade[++i] = leftClade[iLeft++];
-						}
-					}
-				}
-				i++;
-			}
-			String sClade = "";
-			for (i = 0; i < clade.length; i++) {
-				sClade += clade[i] + ",";
-			}
-			sClades.add(sClade);
-		}
-		return clade;
-	}
-	
-	/** calculate maximum difference of clade probabilities 
-	 * of 2 threads. It uses only the clades in thread1, so
-	 * to it requires two calls to make sure no clades in thread2
-	 * are missed, i.e. use max(calcMaxCladeDifference(iThread1, iThread2), calcMaxCladeDifference(iThread2, iThread2)) **/
-	/** TODO: can be done incrementally?!? **/
-	double calcMaxCladeDifference(int iThread1, int iThread2) {
-		if (iThread1 == iThread2) {
-			return 0;
-		}
-		int nTotal = 0;
-		int nMax = 0;
-		HashMap<String, Integer> map1 = m_cladeMaps[iThread1];
-		HashMap<String, Integer> map2 = m_cladeMaps[iThread2];
-		for (String sClade : map1.keySet()) {
-			int i1 = map1.get(sClade);
-			int i2 = 0;
-			if (map2.containsKey(sClade)) {
-				i2 = map2.get(sClade);
-			}
-			nTotal += i1;
-			nMax = Math.max(nMax, Math.abs(i1 - i2));
-		}
-		return nMax / (double) (nTotal/m_nClades);
-	} // calcMaxCladeDifference
 
 	
 
-//	http://hosho.ees.hokudai.ac.jp/~kubo/Rdoc/library/coda/html/gelman.diag.html
-//	Brooks, SP. and Gelman, A. (1997) 
-//	General methods for monitoring convergence of iterative simulations. 
-//	Journal of Computational and Graphical Statistics, 
-//	7, 
-//	434-455. 
-//
-//  m = # threads
-//	n = # samples
-//	B = variance within chain
-//	W = variance among chains
-//	R=(m+1/m)(W(n-1)/n + B/n + B/(mn))/W - (n-1)/nm 
-//	=>
-//	R=(m+1/m)((n-1)/n + B/Wn + B/(Wmn)) - (n-1)/nm
-//	=>
-//	R=(m+1/m)((n-1)/n + B/W(1/n + 1/mn) - (n-1)/nm
-//	=>
-//	R=(m+1/m)((n-1)/n + B/W((m+1)/nm)) - (n-1)/nm
-	/** This calculates the Gelman Rubin statistic from scratch (using 10% burn in)
-	 * and reports the log of the first chain, annotated with the R statistic.
-	 * This number approaches 1 on convergence, so during the run of the chain
-	 * you can check how well the chain converges.
-	 *
-	 * Exploit potential for efficiency by storing means and squared means
-	 * NB: when the start of the chain changes, this needs to be taken in account.
-	 */
-	void calcGRStats(int nCurrentSample) {
-		int nLogItems = m_logTables[0].get(0).length;
-		int nThreads = m_chains.length;
-		// calculate means and variance, use 10% burn in
-		int nSamples = nCurrentSample - nCurrentSample/10;
-		// the Gelman Rubin statistic for each log item 
-		double [] fR = new double [nLogItems];
-		if (nSamples > 5) {
-			if (m_fSums == null) {
-				m_fSums = new double[(nThreads+1)][nLogItems];
-				m_fSquaredSums = new double[(nThreads+1)][nLogItems];
-			}
-
-			int nStartSample = nCurrentSample/10;
-			int nOldStartSample = (nCurrentSample-1)/10;
-			if (nStartSample != nOldStartSample) {
-				// we need to remove log line from means
-				// calc means and squared means
-				int iSample = nOldStartSample;
-				for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-					Double[] fLine = m_logTables[iThread2].get(iSample);
-					for (int iItem = 1; iItem < nLogItems; iItem++) {
-						m_fSums[iThread2][iItem] -= fLine[iItem];
-						m_fSquaredSums[iThread2][iItem] -= fLine[iItem] * fLine[iItem];
-					}
-				}
-				// sum to get totals
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					double fMean = 0;
-					for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-						fMean += m_logTables[iThread2].get(iSample)[iItem];
-					}
-					fMean /= nThreads;
-					m_fSums[nThreads][iItem] -= fMean;
-					m_fSquaredSums[nThreads][iItem] -= fMean * fMean;
-				}
-			}
-
-			// calc means and squared means
-			int iSample = nCurrentSample;
-			for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-				Double[] fLine = m_logTables[iThread2].get(iSample);
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					m_fSums[iThread2][iItem] += fLine[iItem];
-					m_fSquaredSums[iThread2][iItem] += fLine[iItem] * fLine[iItem];
-				}
-			}
-			// sum to get totals
-			for (int iItem = 1; iItem < nLogItems; iItem++) {
-				double fMean = 0;
-				for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-					fMean += m_logTables[iThread2].get(iSample)[iItem];
-				}
-				fMean /= nThreads;
-				m_fSums[nThreads][iItem] += fMean;
-				m_fSquaredSums[nThreads][iItem] += fMean * fMean;
-			}
-
-			// calculate variances for all (including total counts)
-			double [][] fVars = new double[(nThreads+1)][nLogItems];
-			for (int iThread2 = 0; iThread2 < nThreads + 1; iThread2++) {
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					double fMean = m_fSums[iThread2][iItem];
-					double fMean2 = m_fSquaredSums[iThread2][iItem];
-					fVars[iThread2][iItem] = (fMean2 - fMean * fMean);
-				}
-			}
-			
-			for (int iItem = 1; iItem < nLogItems; iItem++) {
-				// average variance for this item
-				double fW = 0;
-				for (int i = 0 ; i < nThreads; i++ ){
-					fW += fVars[i][iItem];
-				}
-				fW /= (nThreads*(nSamples -1));
-				// variance for joint
-				double fB = fVars[nThreads][iItem]/((nThreads-1) * nSamples);
-				fR[iItem] = ((nThreads + 1.0)/nThreads) * ((nSamples-1.0) / nSamples + fB/fW * (nThreads+1)/(nSamples * nThreads)) - (nSamples-1.0)/(nSamples * nThreads); 
-			}
-		}
-
-		// report means
-		Double[] fLine = m_logTables[0].get(nCurrentSample);
-		System.out.print(/*m_nLastReported + " " + */(int)(double)fLine[0] + "\t");
-		for (int iItem = 1; iItem < nLogItems; iItem++) {
-			String sStr = fLine[iItem] + "";
-			if (sStr.length() > 10) {
-				sStr = sStr.substring(0, 10);
-			} else {
-				sStr += "          ".substring(10 - sStr.length());
-			}
-			System.out.print(sStr);
-			if (fR[iItem] > 0) {
-				sStr = fR[iItem] + "";
-				if (sStr.length() > 5) {
-					sStr = sStr.substring(0, 5);
-				}
-				System.out.print("("+sStr+")" + "\t");
-			} else {
-				System.out.print("(-----)" + "\t");
-			}
-		}
-        long nLogTime = System.currentTimeMillis();
-        long nOffset = Logger.getSampleOffset();
-        if (nOffset < fLine[0]) {
-	        int nSecondsPerMSamples = (int) ((nLogTime - m_nStartLogTime) * 1000.0 / (fLine[0] - nOffset + 1.0));
-	        String sTimePerMSamples =
-	                (nSecondsPerMSamples >= 3600 ? nSecondsPerMSamples / 3600 + "h" : "") +
-	                        (nSecondsPerMSamples >= 60 ? (nSecondsPerMSamples % 3600) / 60 + "m" : "") +
-	                        (nSecondsPerMSamples % 60 + "s");
-	        System.out.print(sTimePerMSamples + "/Msamples ");
-        }
-		String sStr = m_fMaxCladeProbDiffs.get(m_nLastReported) + "";
-		if (sStr.length() > 5) {
-			if (m_fMaxCladeProbDiffs.get(m_nLastReported) > 0.001) {
-				sStr = sStr.substring(0, 5);
-			} else {
-				sStr = "<1e-3";
-			}
-		}
-		System.out.print(sStr);
-        System.out.println();
-		System.out.flush();
-		
-	} // processLogLine
 	
-} // class MultiMCMC
+} // class AutoStopMCMC
 
 
 

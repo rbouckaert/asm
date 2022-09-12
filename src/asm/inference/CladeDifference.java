@@ -33,8 +33,26 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 
 	}
 
+	
+	private int current = 0;
+	
 	@Override
 	public boolean converged() {
+		// see if any of the trees has not been processed yet
+		int available = trees[0].size();
+		for (List<Node> d : trees) {
+			available = Math.min(available, d.size());
+		}
+		// if so, process these trees
+		for (int i = current; i < available; i++) {
+			for (int j = 0; j < nChains; j++) {
+				process(j, trees[j].get(i));
+			}
+		}
+		current = available;
+
+		
+		// check clade support differences
 		double fMaxCladeProbDiff = 0;
 		for (int i = 0; i < nChains; i++) {
 			for (int k = 0; k < nChains; k++) {
@@ -46,7 +64,7 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	}
 
 	@Override
-	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
 		this.nChains = nChains;
 		this.trees = trees;
 		m_fMaxCladeProbDiffs = new ArrayList<>();
@@ -59,8 +77,9 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	
 	/** calculate maximum difference of clade probabilities 
 	 * of 2 threads. It uses only the clades in thread1, so
-	 * to it requires two calls to make sure no clades in thread2
-	 * are missed, i.e. use max(calcMaxCladeDifference(iThread1, iThread2), calcMaxCladeDifference(iThread2, iThread2)) **/
+	 * it requires two calls to make sure no clades in thread2
+	 * are missed, i.e. use max(calcMaxCladeDifference(iThread1, iThread2), calcMaxCladeDifference(iThread2, iThread2)) 
+	 **/
 	/** TODO: can be done incrementally?!? **/
 	double calcMaxCladeDifference(int iThread1, int iThread2) {
 		if (iThread1 == iThread2) {
@@ -124,8 +143,7 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	}
 	
 
-	@Override
-	public void process(int chainNr, Double [] logLine, Node root) {
+	public void process(int chainNr, Node root) {
 		List<String> sClades = new ArrayList<String>();
 		m_nClades = traverse(root, sClades).length;
 		Map<String, Integer> cladeMap = m_cladeMaps[chainNr];

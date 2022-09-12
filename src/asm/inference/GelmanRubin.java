@@ -1,6 +1,6 @@
 package asm.inference;
 
-import java.util.ArrayList;
+
 import java.util.List;
 
 import beast.base.core.BEASTObject;
@@ -11,7 +11,7 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 	public Input<Double> acceptedThresholdInput = new Input<>("threshold", "level at which the biggest GR value is still acceptable", 1.05);
 
     /** tables of logs, one for each thread + one for the total**/
-	List<Double[]>[] m_logTables;
+	List<Double>[][] m_logTables;
 	
 	/** pre-calculated sum of itmes and sum of itmes squared for all threads and all items */
 	double [][] m_fSums;
@@ -27,146 +27,77 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 
 	@Override
 	public boolean converged() {
-		int available = m_logTables[0].size();
-		for (List<Double[]> d : m_logTables) {
-			available = Math.min(available, d.size());
+		int available = m_logTables[0].length;
+		for (List<Double>[] d : m_logTables) {
+			available = Math.min(available, d.length);
 		}
-		return calcGRStats(available);
-	}
-
-
-//	http://hosho.ees.hokudai.ac.jp/~kubo/Rdoc/library/coda/html/gelman.diag.html
-//	Brooks, SP. and Gelman, A. (1997) 
-//	General methods for monitoring convergence of iterative simulations. 
-//	Journal of Computational and Graphical Statistics, 
-//	7, 
-//	434-455. 
-//
-//  m = # threads
-//	n = # samples
-//	B = variance within chain
-//	W = variance among chains
-//	R=(m+1/m)(W(n-1)/n + B/n + B/(mn))/W - (n-1)/nm 
-//	=>
-//	R=(m+1/m)((n-1)/n + B/Wn + B/(Wmn)) - (n-1)/nm
-//	=>
-//	R=(m+1/m)((n-1)/n + B/W(1/n + 1/mn) - (n-1)/nm
-//	=>
-//	R=(m+1/m)((n-1)/n + B/W((m+1)/nm)) - (n-1)/nm
-	/** This calculates the Gelman Rubin statistic from scratch (using 10% burn in)
-	 * and reports the log of the first chain, annotated with the R statistic.
-	 * This number approaches 1 on convergence, so during the run of the chain
-	 * you can check how well the chain converges.
-	 *
-	 * Exploit potential for efficiency by storing means and squared means
-	 * NB: when the start of the chain changes, this needs to be taken in account.
-	 */
-	boolean calcGRStats(int nCurrentSample) {
-		int nLogItems = m_logTables[0].get(0).length;
-		int nThreads = nChains;
 		
-		// calculate means and variance, use 10% burn in
-		int nSamples = nCurrentSample - nCurrentSample/10;
-		
-		// the Gelman Rubin statistic for each log item 
-		double [] fR = new double [nLogItems];
-		if (nSamples > 5) {
-			if (m_fSums == null) {
-				m_fSums = new double[(nThreads+1)][nLogItems];
-				m_fSquaredSums = new double[(nThreads+1)][nLogItems];
-			}
-
-			int nStartSample = nCurrentSample/10;
-			int nOldStartSample = (nCurrentSample-1)/10;
-			if (nStartSample != nOldStartSample) {
-				// we need to remove log line from means
-				// calc means and squared means
-				int iSample = nOldStartSample;
-				for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-					Double[] fLine = m_logTables[iThread2].get(iSample);
-					for (int iItem = 1; iItem < nLogItems; iItem++) {
-						m_fSums[iThread2][iItem] -= fLine[iItem];
-						m_fSquaredSums[iThread2][iItem] -= fLine[iItem] * fLine[iItem];
+		// check all items for all pairs
+		int nItems = m_logTables[0].length;
+		for (int i = 0; i < nChains; i++) {
+			for (int j = i+1; j < nChains; j++) {
+				for (int k = 0; k < nItems; k++) {
+					double GRstat = calcGRStat(available, m_logTables[i][k], m_logTables[j][k]);
+					if (GRstat > acceptedThreshold) {
+						return false;
 					}
 				}
-				
-				// sum to get totals
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					double fMean = 0;
-					for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-						fMean += m_logTables[iThread2].get(iSample)[iItem];
-					}
-					fMean /= nThreads;
-					m_fSums[nThreads][iItem] -= fMean;
-					m_fSquaredSums[nThreads][iItem] -= fMean * fMean;
-				}
-			}
-
-			// calc means and squared means
-			int iSample = nCurrentSample;
-			for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-				Double[] fLine = m_logTables[iThread2].get(iSample);
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					m_fSums[iThread2][iItem] += fLine[iItem];
-					m_fSquaredSums[iThread2][iItem] += fLine[iItem] * fLine[iItem];
-				}
-			}
-			
-			// sum to get totals
-			for (int iItem = 1; iItem < nLogItems; iItem++) {
-				double fMean = 0;
-				for (int iThread2 = 0; iThread2 < nThreads; iThread2++) {
-					fMean += m_logTables[iThread2].get(iSample)[iItem];
-				}
-				fMean /= nThreads;
-				m_fSums[nThreads][iItem] += fMean;
-				m_fSquaredSums[nThreads][iItem] += fMean * fMean;
-			}
-
-			// calculate variances for all (including total counts)
-			double [][] fVars = new double[(nThreads+1)][nLogItems];
-			for (int iThread2 = 0; iThread2 < nThreads + 1; iThread2++) {
-				for (int iItem = 1; iItem < nLogItems; iItem++) {
-					double fMean = m_fSums[iThread2][iItem];
-					double fMean2 = m_fSquaredSums[iThread2][iItem];
-					fVars[iThread2][iItem] = (fMean2 - fMean * fMean);
-				}
-			}
-			
-			for (int iItem = 1; iItem < nLogItems; iItem++) {
-				// average variance for this item
-				double fW = 0;
-				for (int i = 0 ; i < nThreads; i++ ){
-					fW += fVars[i][iItem];
-				}
-				fW /= (nThreads*(nSamples -1));
-				// variance for joint
-				double fB = fVars[nThreads][iItem]/((nThreads-1) * nSamples);
-				fR[iItem] = ((nThreads + 1.0)/nThreads) * ((nSamples-1.0) / nSamples + fB/fW * (nThreads+1)/(nSamples * nThreads)) - (nSamples-1.0)/(nSamples * nThreads); 
-			}
-		}
-
-		for (double f : fR) {
-			if (f > acceptedThreshold) {
-				return false;
 			}
 		}
 		return true;
-	} // calcGRStats
+	}
+
+	
+	/** original Gelman Rubin statistic for 2 chains **/	
+	private double calcGRStat(int sampleCount, List<Double> trace1, List<Double> trace2) {
+		if (sampleCount >= trace1.size() || sampleCount > trace2.size()) {
+			throw new IllegalArgumentException("Expected traces of sufficient length");
+		}
+		
+		// calc means and squared means
+		double mean1 = 0, mean2 = 0, sumsq1 = 0, sumsq2 = 0;
+		for (int i = 0; i < sampleCount; i++) {
+			Double d = trace1.get(i);
+			mean1 += d;
+			sumsq1 += d * d;
+		}
+		mean1 /= sampleCount;
+		for (int i = 0; i < sampleCount; i++) {
+			Double d = trace2.get(i);
+			mean2 += d;
+			sumsq2 += d * d;
+		}
+		mean2 /= sampleCount;
+
+		// calculate variances for both chains
+		double var1 = (sumsq1 - mean1 * mean1 * sampleCount)/(sampleCount - 1);
+		double var2 = (sumsq2 - mean2 * mean2 * sampleCount)/(sampleCount - 1);
+		
+		// average variance for this item
+		double fW = (var1 + var2) / 2;
+		if (fW == 0) {
+			return 1;
+		}
+
+		// sum to get totals
+		double totalMean = (mean1 + mean2) / 2;
+		double totalSq = mean1*mean1 + mean2*mean2;
+		
+		// variance for joint
+		double fB = (totalSq - totalMean * totalMean * 2);
+		
+		
+		double varR = ((sampleCount - 1.0)/sampleCount) + (fB/fW)*(1.0/sampleCount);
+		double R = Math.sqrt(varR);
+		return R;
+	}
+
 
 	
 	@Override
-	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
 		this.nChains = nChains;
 		m_logTables = logLines;
 	}
-	
-	@Override
-	public void process(int sampleNr, Double [] logLine, Node root) {
-		// nothing to do
-		// m_logTables is already updated with the latest logLine
-	}
-	
-	
 	
 }

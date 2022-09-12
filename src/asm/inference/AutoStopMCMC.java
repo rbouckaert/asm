@@ -3,7 +3,6 @@ package asm.inference;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -13,7 +12,6 @@ import beast.base.core.Log;
 import beast.base.inference.Logger;
 import beast.base.inference.MCMC;
 import beast.base.evolution.tree.Node;
-import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.parser.XMLParser;
 import beast.base.parser.XMLParserException;
@@ -40,7 +38,7 @@ public class AutoStopMCMC extends MCMC {
     long m_nStartLogTime;
 	
     /** tables of logs, one for each thread + one for the total**/
-	List<Double[]>[] m_logLines;
+	List<Double>[][] m_logLines;
 	
 	/** last line for which log is reported for all chains */
 	int m_nLastReported = 0;
@@ -69,9 +67,6 @@ public class AutoStopMCMC extends MCMC {
 			Log.warning("=========================");
 		}
 		stoppingCriterionInput.get().clear();
-		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
-			stoppingCriterium.setup(m_chains.length, m_logLines, trees);
-		}
 		
 		// the difference between the various chains is
 		// 1. it runs an MCMC, not an AutoStopMCMC
@@ -137,9 +132,10 @@ public class AutoStopMCMC extends MCMC {
 			trees[i] = new ArrayList<>();
 		}
 
-		m_logLines = new List[m_chains.length + 1];
-		for (int i = 0; i < m_chains.length+1; i++) {
-			m_logLines[i] = new ArrayList<Double[]>();
+		m_logLines = new List[m_chains.length + 1][];
+		
+		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
+			stoppingCriterium.setup(m_chains.length, m_logLines, trees);
 		}
 
 		// start threads with individual chains here.
@@ -233,14 +229,18 @@ public class AutoStopMCMC extends MCMC {
 						}
 					}
 					
-					for (int i = 0; i < nThreads; i++) {
-						for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
-							crit.process(i, m_logLines[i].get(m_nLastReported), trees[i].get(m_nLastReported));
+					boolean converged = true;
+					for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
+						converged |= crit.converged();
+					}
+					Log.info("Check " + m_nLastReported + " " + converged);
+					if (converged) {
+						// stop all threads
+						for (Thread t : m_threads) {
+							t.stop();
 						}
 					}
-					
-					
-					m_nLastReported++;				
+//					m_nLastReported++;				
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -261,12 +261,22 @@ public class AutoStopMCMC extends MCMC {
 				sStrs = sStr.split("\\s+");
 			} while (sStr.startsWith(("#")) || sStrs.length == 1); // ignore comment lines
 			int nItems = sStrs.length;
-			Double[] logLine = new Double[nItems];
+			
+			if (m_logLines[0] == null) {
+				for (int i = 0; i < m_chains.length; i++) {
+					m_logLines[i] = new List[nItems];
+				}
+				for (int i = 0; i < m_chains.length; i++) {
+					for (int j = 0; j < nItems; j++) {
+						m_logLines[i][j] = new ArrayList<>();
+					}
+				}
+			}
+			
 			try {
 				for (int i = 0; i < nItems; i++) {
-					logLine[i] = Double.parseDouble(sStrs[i]);
+					m_logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
 				}
-				m_logLines[iThread].add(logLine);
 			} catch (Exception e) {
 				//ignore, probably a parse errors
 				if (iThread == 0) {
@@ -300,7 +310,7 @@ public class AutoStopMCMC extends MCMC {
 					e.printStackTrace();
 				}
 			}
-		} while (!sStr.matches("tree STATE.*")); // ignore non-tree lines
+		} while (sStr == null || !sStr.matches("tree STATE.*")); // ignore non-tree lines
 
 		sStr = sStr.substring(sStr.indexOf("("));
 		TreeParser parser = new TreeParser();

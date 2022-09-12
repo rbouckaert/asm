@@ -25,14 +25,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	@Override
-	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
-		// TODO Auto-generated method stub
-		
-	}
-	
-
-	@Override
-	public void process(int sampleNr, Double[] logLine, Node root) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
 		// TODO Auto-generated method stub
 		
 	}

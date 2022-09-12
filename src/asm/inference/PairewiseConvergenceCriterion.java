@@ -20,8 +20,8 @@ public interface PairewiseConvergenceCriterion {
 	 * @param logLines TODO
 	 * @param trees TODO
 	 */
-	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees);
+	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees);
 	
 	
-	public void process(int chainNr, Double [] logLine, Node root);
+	// public void process(int chainNr, Double [] logLine, Node root);
 }

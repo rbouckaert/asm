@@ -156,29 +156,16 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 
 	
 	@Override
-	public void setup(int nChains) {
+	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
 		this.nChains = nChains;
-
-		// start a thread to tail all log files
-		m_logTables = new List[nChains + 1];
-		for (int i = 0; i < nChains+1; i++) {
-			m_logTables[i] = new ArrayList<Double[]>();
-		}
+		m_logTables = logLines;
 	}
 	
 	@Override
-	public void process(int chainNr, Double [] logLine, Node root) {
-		processLogLine(chainNr, logLine);
+	public void process(int sampleNr, Double [] logLine, Node root) {
+		// nothing to do
+		// m_logTables is already updated with the latest logLine
 	}
-	
-	
-	/** Add log line to log table, and check whether other threads are up to date
-	 * enough to report on a sample. 
-	 */
-	synchronized void processLogLine(int iThread, Double[] logLine) {
-		m_logTables[iThread].add(logLine);
-	}
-	
 	
 	
 	

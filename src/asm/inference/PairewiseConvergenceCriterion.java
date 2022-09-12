@@ -1,6 +1,8 @@
 package asm.inference;
 
 
+import java.util.List;
+
 import beast.base.core.Description;
 import beast.base.evolution.tree.Node;
 
@@ -15,8 +17,10 @@ public interface PairewiseConvergenceCriterion {
 	/**
 	 * initialise memory based on number of chains
 	 * @param nChains number of chains
+	 * @param logLines TODO
+	 * @param trees TODO
 	 */
-	public void setup(int nChains);
+	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees);
 	
 	
 	public void process(int chainNr, Double [] logLine, Node root);

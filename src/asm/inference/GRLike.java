@@ -1,6 +1,8 @@
 package asm.inference;
 
 
+import java.util.List;
+
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -23,14 +25,14 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	@Override
-	public void setup(int nChains) {
+	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
 		// TODO Auto-generated method stub
 		
 	}
 	
 
 	@Override
-	public void process(int chainNr, Double[] logLine, Node root) {
+	public void process(int sampleNr, Double[] logLine, Node root) {
 		// TODO Auto-generated method stub
 		
 	}

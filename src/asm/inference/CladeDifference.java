@@ -9,7 +9,6 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
-import beast.base.evolution.tree.Tree;
 
 @Description("Pairwise convergence criterion based on the difference in clade support between the chains")
 public class CladeDifference extends BEASTObject implements PairewiseConvergenceCriterion {
@@ -26,6 +25,7 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	
 	int nChains;
 	double acceptedThreshold;
+	List<Node>[] trees;
 	
 	@Override
 	public void initAndValidate() {
@@ -46,8 +46,9 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	}
 
 	@Override
-	public void setup(int nChains) {
+	public void setup(int nChains, List<Double[]>[] logLines, List<Node>[] trees) {
 		this.nChains = nChains;
+		this.trees = trees;
 		m_fMaxCladeProbDiffs = new ArrayList<>();
 		m_cladeMaps = new Map[nChains];
 		for (int i = 0; i < nChains; i++) {

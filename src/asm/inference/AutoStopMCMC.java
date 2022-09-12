@@ -70,7 +70,7 @@ public class AutoStopMCMC extends MCMC {
 		}
 		stoppingCriterionInput.get().clear();
 		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
-			stoppingCriterium.setup(m_chains.length);
+			stoppingCriterium.setup(m_chains.length, m_logLines, trees);
 		}
 		
 		// the difference between the various chains is

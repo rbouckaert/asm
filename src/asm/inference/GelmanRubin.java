@@ -4,9 +4,12 @@ package asm.inference;
 import java.util.List;
 
 import beast.base.core.BEASTObject;
+import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
 
+@Description("Checks the Gelman Rubin statistic for all items in trace log and "
+		+ "between every pair of chains.")
 public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCriterion {
 	public Input<Double> acceptedThresholdInput = new Input<>("threshold", "level at which the biggest GR value is still acceptable", 1.05);
 
@@ -27,9 +30,9 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 
 	@Override
 	public boolean converged() {
-		int available = m_logTables[0].length;
+		int available = m_logTables[0][0].size();
 		for (List<Double>[] d : m_logTables) {
-			available = Math.min(available, d.length);
+			available = Math.min(available, d[0].size());
 		}
 		
 		// check all items for all pairs
@@ -50,7 +53,7 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 	
 	/** original Gelman Rubin statistic for 2 chains **/	
 	private double calcGRStat(int sampleCount, List<Double> trace1, List<Double> trace2) {
-		if (sampleCount >= trace1.size() || sampleCount > trace2.size()) {
+		if (sampleCount > trace1.size() || sampleCount > trace2.size()) {
 			throw new IllegalArgumentException("Expected traces of sufficient length");
 		}
 		

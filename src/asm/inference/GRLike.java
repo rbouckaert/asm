@@ -12,10 +12,11 @@ import beast.base.evolution.tree.Node;
 public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
 
+	List<Node>[] trees;
+	int nChains;
+	
 	@Override
 	public void initAndValidate() {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -26,8 +27,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 
 	@Override
 	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
-		// TODO Auto-generated method stub
-		
+		this.trees = trees;
+		this.nChains = nChains;
+		if (nChains != 2) {
+			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
+		}
 	}
 
 }

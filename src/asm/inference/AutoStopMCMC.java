@@ -29,7 +29,7 @@ public class AutoStopMCMC extends MCMC {
 	public Input<List<PairewiseConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
 	
 	/** plugins representing MCMC with model, loggers, etc **/
-	MCMC [] m_chains;
+	MCMCChain [] m_chains;
 	
 	/** threads for running MCMC chains **/
 	Thread [] m_threads;
@@ -56,7 +56,7 @@ public class AutoStopMCMC extends MCMC {
 
 	@Override
 	public void initAndValidate() {
-		m_chains = new MCMC[nrOfChainsInput.get()];
+		m_chains = new MCMCChain[nrOfChainsInput.get()];
 		stoppingCriteria = new ArrayList<>();
 		stoppingCriteria.addAll(stoppingCriterionInput.get());
 		if (stoppingCriteria.size() == 0) {
@@ -79,7 +79,7 @@ public class AutoStopMCMC extends MCMC {
 		
 		String sMultiMCMC = this.getClass().getName();
 		while (sMultiMCMC.length() > 0) {
-			sXML = sXML.replaceAll("\\b"+sMultiMCMC+"\\b", MCMC.class.getName());
+			sXML = sXML.replaceAll("\\b"+sMultiMCMC+"\\b", MCMCChain.class.getName());
 			if (sMultiMCMC.indexOf('.') >= 0) {
 				sMultiMCMC = sMultiMCMC.substring(sMultiMCMC.indexOf('.')+1);
 			} else {
@@ -97,7 +97,7 @@ public class AutoStopMCMC extends MCMC {
 				throw new IllegalArgumentException("Use file loggers, otherwise there are no trace a tree logs to track");
 			}
 			try {
-				m_chains[i] = (MCMC) parser.parseFragment(sXML2, true);
+				m_chains[i] = (MCMCChain) parser.parseFragment(sXML2, true);
 			} catch (XMLParserException e) {
 				throw new IllegalArgumentException(e);
 			}
@@ -132,7 +132,7 @@ public class AutoStopMCMC extends MCMC {
 			trees[i] = new ArrayList<>();
 		}
 
-		m_logLines = new List[m_chains.length + 1][];
+		m_logLines = new List[m_chains.length][];
 		
 		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
 			stoppingCriterium.setup(m_chains.length, m_logLines, trees);
@@ -236,11 +236,12 @@ public class AutoStopMCMC extends MCMC {
 					Log.info("Check " + m_nLastReported + " " + converged);
 					if (converged) {
 						// stop all threads
-						for (Thread t : m_threads) {
-							t.stop();
+						for (MCMCChain t : m_chains) {
+							t.terminate();
 						}
+						return;
 					}
-//					m_nLastReported++;				
+					m_nLastReported++;				
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

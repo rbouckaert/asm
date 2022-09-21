@@ -2,14 +2,16 @@ package asm.inference;
 
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.util.ESS;
+import beastlabs.evolution.tree.RNNIMetric;
 
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
 public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion {
@@ -49,19 +51,19 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		List<Double> psrf1 = new ArrayList<>();
 		List<Double> psrf2 = new ArrayList<>();
 		for (int x = start; x < end; x++) {
-			psrf1.add(calcPSRF(trees[0], trees[1], x, start, end));
-			psrf2.add(calcPSRF(trees[1], trees[0], x, start, end));
+			psrf1.add(calcPSRF(0, 1, x, start, end));
+			psrf2.add(calcPSRF(1, 0, x, start, end));
 		}
-		double psrf1median = median(psrf1);
-		double psrf2median = median(psrf1);
+		double psrf1median = mean(psrf1);
+		double psrf2median = mean(psrf1);
 		
 		if (lower < psrf1median && psrf1median < upper && lower < psrf2median && psrf2median < upper) {
 			consecutive++;
 			if (consecutive >= targetESS) {
                 int cutStart = end - consecutive + 1;
                 int cutEnd = end;
-                if (pseudoEss(trees[0], cutStart, cutEnd) >= targetESS && 
-                	pseudoEss(trees[1], cutStart, cutEnd) >= targetESS) {
+                if (pseudoEss(0, cutStart, cutEnd) >= targetESS && 
+                	pseudoEss(1, cutStart, cutEnd) >= targetESS) {
                 	return true;
                 }
 			}
@@ -73,38 +75,168 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		return false;
 	}
 
-	private double pseudoEss(List<Node> trees, int cutStart, int cutEnd) {
+	
+	final static int N = 10;
+
+	private double pseudoEss(int treeSet, int cutStart, int cutEnd) {
+		// subsample N trees in range [cutStart, cutEnd]
+		int [] indices = new int[N];
+		for (int i = 0; i < N; i++) {
+			indices[i] = cutStart + (cutEnd-cutStart) * i / N;
+		}
+
+		// calc sum of distances to the trees with index from `indices`
 		List<Double> trace = new ArrayList<>(cutEnd - cutStart);
 		for (int i = cutStart; i < cutEnd; i++) {
-			trace.add(distance(trees.get(i), trees.get(cutEnd)));
+			double d = 0;
+			for (int j = 0; j <N; j++) {
+				d += distance(treeSet, i, treeSet, indices[j]);
+			}
+			trace.add(d);
 		}
+
+		// calc ESS for the trace
 		double ess = ESS.calcESS(trace);
 		return ess;
 	}
 
-	private double median(List<Double> psrf) {
-		Collections.sort(psrf);
-		return psrf.get(psrf.size()/2);
+	private double mean(List<Double> psrf) {
+		double sum = 0;
+		for (double d : psrf) {
+			sum += d;
+		}
+		double mean = sum / psrf.size();
+		return mean;
 	}
 
-	private Double calcPSRF(List<Node> trees1, List<Node> trees2, int k, int start, int end) {
+	private Double calcPSRF(int treeSet1, int treeSet2, int k, int start, int end) {
 		double varIn = 0;
 		for (int i = start; i < end; i++) {
-			double d = distance(trees1.get(k), trees1.get(i));
+			double d = distance(treeSet1, k, treeSet1, i);
 			varIn += d * d;
 		}
 		double varBetween = 0;
 		for (int i = start; i < end; i++) {
-			double d = distance(trees1.get(k), trees2.get(i));
+			double d = distance(treeSet1, k, treeSet2, i);
 			varBetween += d * d;
 		}
-		double psrf = Math.sqrt(varIn/varBetween);
+		double psrf = Math.sqrt(varBetween/varIn);
 		return psrf;
 	}
 
-	private double distance(Node tree1, Node tree2) {
-		// TODO implement
-		return 0;
+	
+	class DistanceMatrixCache {
+		// symmetric 2d distance matrix for trees 1
+		double [] cache11;
+		// symmetric 2d distance matrix for trees 2
+		double [] cache22;
+		// asymmetric 2d distance matrix between trees 1 and trees 2
+		// represented by lower triangle and upper triangle half-matrices
+		double [] cache12, cache21;
+		// matrix size
+		int size;
+		
+		DistanceMatrixCache(int n) {
+			cache11 = new double[n*(n-1)/2];
+			cache22 = new double[n*(n-1)/2];
+			cache12 = new double[n*(n-1)/2];
+			cache21 = new double[n*(n-1)/2];
+		}
+		
+		double getDistance(int treeSet1, int index1, int treeSet2, int index2) {
+			if (index1 >= size || index2 >= size) {
+				// resize
+				size += 1024;
+				cache11 = Arrays.copyOf(cache11, size*(size-1)/2);
+				cache22 = Arrays.copyOf(cache22, size*(size-1)/2);
+				cache12 = Arrays.copyOf(cache12, size*(size-1)/2);
+				cache21 = Arrays.copyOf(cache21, size*(size-1)/2);
+			}
+			
+			if (treeSet1 == 0) {
+				if (treeSet2 == 0) {
+					int i = index1 > index2 ?  
+						index1 * (index1 - 1)/2 + index2:
+						index2 * (index2 - 1)/2 + index1;
+					return cache11[i];
+				} else {
+					if (index1 > index2) {  
+						int i = index1 * (index1 - 1)/2 + index2;
+						return cache12[i];
+					} else {
+						int i = index2 * (index2 - 1)/2 + index1;
+						return cache21[i];
+					}
+				}
+			} else {
+				if (treeSet2 == 0) {
+					int i = index2 * size + index1;  
+					return cache12[i];
+				} else {
+					if (index1 > index2) {  
+						int i = index1 * (index1 - 1)/2 + index2;
+						return cache21[i];
+					} else {
+						int i = index2 * (index2 - 1)/2 + index1;
+						return cache12[i];
+					}
+				}
+			}			
+		}
+
+		void setDistance(int treeSet1, int index1, int treeSet2, int index2, double d) {
+			if (treeSet1 == 0) {
+				if (treeSet2 == 0) {
+					int i = index1 > index2 ?  
+						index1 * (index1 - 1)/2 + index2:
+						index2 * (index2 - 1)/2 + index1;
+					cache11[i] = d;
+				} else {
+					if (index1 > index2) {  
+						int i = index1 * (index1 - 1)/2 + index2;
+						cache12[i] = d;
+					} else {
+						int i = index2 * (index2 - 1)/2 + index1;
+						cache21[i] = d;
+					}
+				}
+			} else {
+				if (treeSet2 == 0) {
+					if (index1 > index2) {  
+						int i = index1 * (index1 - 1)/2 + index2;
+						cache21[i] = d;
+					} else {
+						int i = index2 * (index2 - 1)/2 + index1;
+						cache12[i] = d;
+					}
+				} else {
+					int i = index1 > index2 ?  
+							index1 * (index1 - 1)/2 + index2:
+							index2 * (index2 - 1)/2 + index1;
+					cache22[i] = d;
+				}
+			}			
+			
+		}
+	}
+	
+	DistanceMatrixCache cache = new DistanceMatrixCache(1024);
+	
+	private double distance(int treeSet1, int index1, int treeSet2, int index2) {
+		double d = cache.getDistance(treeSet1, index1, treeSet2, index2);
+		if (treeSet1 == treeSet2 && index1 == index2) {
+			return 0;
+		}
+		if (d > 0) {
+			return d;
+		}
+		
+		TreeInterface tree1 = trees[treeSet1].get(index1).getTree();
+		TreeInterface tree2 = trees[treeSet2].get(index2).getTree();
+		RNNIMetric m = new RNNIMetric();
+		d = m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
+		cache.setDistance(treeSet1, index1, treeSet2, index2, d);
+		return d;
 	}
 
 	@Override
@@ -115,5 +247,8 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
 		}
 	}
+
+
+
 
 }

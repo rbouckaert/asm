@@ -231,7 +231,10 @@ public class AutoStopMCMC extends MCMC {
 					
 					boolean converged = true;
 					for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
-						converged |= crit.converged();
+						if (!crit.converged()) {
+							converged = false;
+							break;
+						}
 					}
 					Log.info("Check " + m_nLastReported + " " + converged);
 					if (converged) {

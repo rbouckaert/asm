@@ -54,10 +54,10 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			psrf1.add(calcPSRF(0, 1, x, start, end));
 			psrf2.add(calcPSRF(1, 0, x, start, end));
 		}
-		double psrf1median = mean(psrf1);
-		double psrf2median = mean(psrf1);
+		double psrf1mean = mean(psrf1);
+		double psrf2mean = mean(psrf1);
 		
-		if (lower < psrf1median && psrf1median < upper && lower < psrf2median && psrf2median < upper) {
+		if (lower < psrf1mean && psrf1mean < upper && lower < psrf2mean && psrf2mean < upper) {
 			consecutive++;
 			if (consecutive >= targetESS) {
                 int cutStart = end - consecutive + 1;
@@ -70,7 +70,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		} else {
 			consecutive = 0;
 		}
-		
 		
 		return false;
 	}
@@ -89,9 +88,15 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		List<Double> trace = new ArrayList<>(cutEnd - cutStart);
 		for (int i = cutStart; i < cutEnd; i++) {
 			double d = 0;
+			int counts = 0;
 			for (int j = 0; j <N; j++) {
-				d += distance(treeSet, i, treeSet, indices[j]);
+				if (i != indices[j]) {
+					// only include average distance to other trees
+					d += distancePlusOne(treeSet, i, treeSet, indices[j]);
+					counts++;
+				}
 			}
+			d /= counts;
 			trace.add(d);
 		}
 
@@ -112,12 +117,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	private Double calcPSRF(int treeSet1, int treeSet2, int k, int start, int end) {
 		double varIn = 0;
 		for (int i = start; i < end; i++) {
-			double d = distance(treeSet1, k, treeSet1, i);
+			double d = distancePlusOne(treeSet1, k, treeSet1, i);
 			varIn += d * d;
 		}
 		double varBetween = 0;
 		for (int i = start; i < end; i++) {
-			double d = distance(treeSet1, k, treeSet2, i);
+			double d = distancePlusOne(treeSet1, k, treeSet2, i);
 			varBetween += d * d;
 		}
 		double psrf = Math.sqrt(varBetween/varIn);
@@ -127,23 +132,23 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	
 	class DistanceMatrixCache {
 		// symmetric 2d distance matrix for trees 1
-		double [] cache11;
+		float [] cache11;
 		// symmetric 2d distance matrix for trees 2
-		double [] cache22;
+		float [] cache22;
 		// asymmetric 2d distance matrix between trees 1 and trees 2
 		// represented by lower triangle and upper triangle half-matrices
-		double [] cache12, cache21;
+		float [] cache12, cache21;
 		// matrix size
 		int size;
 		
 		DistanceMatrixCache(int n) {
-			cache11 = new double[n*(n-1)/2];
-			cache22 = new double[n*(n-1)/2];
-			cache12 = new double[n*(n-1)/2];
-			cache21 = new double[n*(n-1)/2];
+			cache11 = new float[n*(n-1)/2];
+			cache22 = new float[n*(n-1)/2];
+			cache12 = new float[n*(n-1)/2];
+			cache21 = new float[n*(n-1)/2];
 		}
 		
-		double getDistance(int treeSet1, int index1, int treeSet2, int index2) {
+		float getDistance(int treeSet1, int index1, int treeSet2, int index2) {
 			if (index1 >= size || index2 >= size) {
 				// resize
 				size += 1024;
@@ -184,7 +189,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			}			
 		}
 
-		void setDistance(int treeSet1, int index1, int treeSet2, int index2, double d) {
+		void setDistance(int treeSet1, int index1, int treeSet2, int index2, float d) {
 			if (treeSet1 == 0) {
 				if (treeSet2 == 0) {
 					int i = index1 > index2 ?  
@@ -222,10 +227,10 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	
 	DistanceMatrixCache cache = new DistanceMatrixCache(1024);
 	
-	private double distance(int treeSet1, int index1, int treeSet2, int index2) {
-		double d = cache.getDistance(treeSet1, index1, treeSet2, index2);
+	private float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
+		float d = cache.getDistance(treeSet1, index1, treeSet2, index2);
 		if (treeSet1 == treeSet2 && index1 == index2) {
-			return 0;
+			return 0+1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		}
 		if (d > 0) {
 			return d;
@@ -234,7 +239,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		TreeInterface tree1 = trees[treeSet1].get(index1).getTree();
 		TreeInterface tree2 = trees[treeSet2].get(index2).getTree();
 		RNNIMetric m = new RNNIMetric();
-		d = m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
+		d = (float) m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		cache.setDistance(treeSet1, index1, treeSet2, index2, d);
 		return d;
 	}

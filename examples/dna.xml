@@ -36,8 +36,8 @@ name="alignment">
 
     <map name="OneOnX" >beast.base.inference.distribution.OneOnX</map>
 
-    <run id="mcmc" spec="asm.inference.AutoStopMCMC" chainLength="1000000" chains="2">
-        <stoppingCriterion spec="asm.inference.GelmanRubin"/>
+    <run id="mcmc" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2">
+        <stoppingCriterion spec="asm.inference.GRLike"/>
         <state id="state" spec="State" storeEvery="5000">
             <tree id="Tree.t:dna" spec="beast.base.evolution.tree.Tree" name="stateNode">
                 <taxonset id="TaxonSet.dna" spec="beast.base.evolution.alignment.TaxonSet">

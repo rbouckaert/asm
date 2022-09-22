@@ -319,7 +319,7 @@ public class AutoStopMCMC extends MCMC {
 
 		sStr = sStr.substring(sStr.indexOf("("));
 		TreeParser parser = new TreeParser();
-		parser.offsetInput.setValue(0, parser);
+		parser.offsetInput.setValue(1, parser);
 		Node root = parser.parseNewick(sStr);
 		parser.setRoot(root);
 		Tree tree = parser.copy();

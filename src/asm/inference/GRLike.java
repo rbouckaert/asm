@@ -8,6 +8,7 @@ import java.util.List;
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
@@ -71,7 +72,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		} else {
 			consecutive = 0;
 		}
-		
+		Log.info.print(consecutive + " ");
 		return false;
 	}
 
@@ -138,7 +139,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		float [] cache22;
 		// asymmetric 2d distance matrix between trees 1 and trees 2
 		// represented by lower triangle and upper triangle half-matrices
-		float [] cache12, cache21;
+		float [] cache12, cache21, diagonal;
 		// matrix size
 		int size;
 		
@@ -147,6 +148,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			cache22 = new float[n*(n-1)/2];
 			cache12 = new float[n*(n-1)/2];
 			cache21 = new float[n*(n-1)/2];
+			diagonal = new float[n];
 		}
 		
 		float getDistance(int treeSet1, int index1, int treeSet2, int index2) {
@@ -157,6 +159,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 				cache22 = Arrays.copyOf(cache22, size*(size-1)/2);
 				cache12 = Arrays.copyOf(cache12, size*(size-1)/2);
 				cache21 = Arrays.copyOf(cache21, size*(size-1)/2);
+				diagonal = Arrays.copyOf(diagonal, size);
 			}
 			
 			if (treeSet1 == 0) {
@@ -169,9 +172,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 					if (index1 > index2) {  
 						int i = index1 * (index1 - 1)/2 + index2;
 						return cache12[i];
-					} else {
+					} else if (index1 < index2) {  
 						int i = index2 * (index2 - 1)/2 + index1;
 						return cache21[i];
+					} else {
+						return diagonal[index1];
 					}
 				}
 			} else {
@@ -182,9 +187,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 					if (index1 > index2) {  
 						int i = index1 * (index1 - 1)/2 + index2;
 						return cache21[i];
-					} else {
+					} else if (index1 < index2) {
 						int i = index2 * (index2 - 1)/2 + index1;
 						return cache12[i];
+					} else {
+						return diagonal[index1];
 					}
 				}
 			}			
@@ -201,9 +208,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 					if (index1 > index2) {  
 						int i = index1 * (index1 - 1)/2 + index2;
 						cache12[i] = d;
-					} else {
+					} else if (index1 < index2) {
 						int i = index2 * (index2 - 1)/2 + index1;
 						cache21[i] = d;
+					} else {
+						diagonal[index1] = d;
 					}
 				}
 			} else {
@@ -211,9 +220,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 					if (index1 > index2) {  
 						int i = index1 * (index1 - 1)/2 + index2;
 						cache21[i] = d;
-					} else {
+					} else if (index1 < index2) {
 						int i = index2 * (index2 - 1)/2 + index1;
 						cache12[i] = d;
+					} else {
+						diagonal[index1] = d;
 					}
 				} else {
 					int i = index1 > index2 ?  

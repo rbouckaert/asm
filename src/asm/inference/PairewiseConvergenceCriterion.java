@@ -4,7 +4,7 @@ package asm.inference;
 import java.util.List;
 
 import beast.base.core.Description;
-import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
 
 @Description("Determine convergence based on two running chains")
 public interface PairewiseConvergenceCriterion {
@@ -20,7 +20,7 @@ public interface PairewiseConvergenceCriterion {
 	 * @param logLines TODO
 	 * @param trees TODO
 	 */
-	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees);
+	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees);
 	
 	
 	// public void process(int chainNr, Double [] logLine, Node root);

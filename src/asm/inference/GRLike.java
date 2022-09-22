@@ -9,6 +9,7 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.util.ESS;
 import beastlabs.evolution.tree.RNNIMetric;
@@ -19,7 +20,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how many trees to disregard", 0.5);
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
 
-	List<Node>[] trees;
+	List<Tree>[] trees;
 	int nChains;
 
 	// number of consecutive trees added where the 
@@ -40,7 +41,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	@Override
 	public boolean converged() {
 		int end = Integer.MAX_VALUE;
-		for (List<Node> t : trees) {
+		for (List<Tree> t : trees) {
 			end = Math.min(end, t.size());
 		}
 		int start = (int)(end * smoothing);
@@ -228,16 +229,16 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	DistanceMatrixCache cache = new DistanceMatrixCache(1024);
 	
 	private float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
-		float d = cache.getDistance(treeSet1, index1, treeSet2, index2);
 		if (treeSet1 == treeSet2 && index1 == index2) {
 			return 0+1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		}
+		float d = cache.getDistance(treeSet1, index1, treeSet2, index2);
 		if (d > 0) {
 			return d;
 		}
 		
-		TreeInterface tree1 = trees[treeSet1].get(index1).getTree();
-		TreeInterface tree2 = trees[treeSet2].get(index2).getTree();
+		TreeInterface tree1 = trees[treeSet1].get(index1);
+		TreeInterface tree2 = trees[treeSet2].get(index2);
 		RNNIMetric m = new RNNIMetric();
 		d = (float) m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		cache.setDistance(treeSet1, index1, treeSet2, index2, d);
@@ -245,7 +246,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
 		this.trees = trees;
 		this.nChains = nChains;
 		if (nChains != 2) {

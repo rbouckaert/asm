@@ -12,6 +12,7 @@ import beast.base.core.Log;
 import beast.base.inference.Logger;
 import beast.base.inference.MCMC;
 import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.parser.XMLParser;
 import beast.base.parser.XMLParserException;
@@ -45,7 +46,7 @@ public class AutoStopMCMC extends MCMC {
 	
 	
     /** tables of trees, one for each thread + one for the total **/
-	List<Node> [] trees;
+	List<Tree> [] trees;
 	
 	List<PairewiseConvergenceCriterion> stoppingCriteria;
 	
@@ -320,7 +321,9 @@ public class AutoStopMCMC extends MCMC {
 		TreeParser parser = new TreeParser();
 		parser.offsetInput.setValue(0, parser);
 		Node root = parser.parseNewick(sStr);
-		trees[iThread].add(root);
+		parser.setRoot(root);
+		Tree tree = parser.copy();
+		trees[iThread].add(tree);
 		return true;
 	} // readTreeLogLine
 

@@ -1,12 +1,13 @@
 package asm.inference;
 
 
+
 import java.util.List;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
 
 @Description("Checks the Gelman Rubin statistic for all items in trace log and "
 		+ "between every pair of chains.")
@@ -98,7 +99,7 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 
 	
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
 		this.nChains = nChains;
 		m_logTables = logLines;
 	}

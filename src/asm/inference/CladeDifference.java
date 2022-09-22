@@ -9,6 +9,7 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
 
 @Description("Pairwise convergence criterion based on the difference in clade support between the chains")
 public class CladeDifference extends BEASTObject implements PairewiseConvergenceCriterion {
@@ -25,7 +26,7 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	
 	int nChains;
 	double acceptedThreshold;
-	List<Node>[] trees;
+	List<Tree>[] trees;
 	
 	@Override
 	public void initAndValidate() {
@@ -40,13 +41,13 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	public boolean converged() {
 		// see if any of the trees has not been processed yet
 		int available = trees[0].size();
-		for (List<Node> d : trees) {
+		for (List<Tree> d : trees) {
 			available = Math.min(available, d.size());
 		}
 		// if so, process these trees
 		for (int i = current; i < available; i++) {
 			for (int j = 0; j < nChains; j++) {
-				process(j, trees[j].get(i));
+				process(j, trees[j].get(i).getRoot());
 			}
 		}
 		current = available;
@@ -64,7 +65,7 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	}
 
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Node>[] trees) {
+	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
 		this.nChains = nChains;
 		this.trees = trees;
 		m_fMaxCladeProbDiffs = new ArrayList<>();

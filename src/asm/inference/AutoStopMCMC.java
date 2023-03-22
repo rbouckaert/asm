@@ -231,13 +231,15 @@ public class AutoStopMCMC extends MCMC {
 					}
 					
 					boolean converged = true;
+					long start = System.currentTimeMillis();
 					for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
 						if (!crit.converged()) {
 							converged = false;
 							break;
 						}
 					}
-					Log.info("Check " + m_nLastReported + " " + converged);
+					long end = System.currentTimeMillis();					
+					Log.info("Check " + m_nLastReported + " " + converged + " in " + (end-start) + " mseconds");
 					if (converged) {
 						// stop all threads
 						for (MCMCChain t : m_chains) {

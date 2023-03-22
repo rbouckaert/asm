@@ -9,7 +9,6 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
-import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.util.ESS;
@@ -21,19 +20,33 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how many trees to disregard", 0.5);
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
 
+	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
+			"Maximum size of the tree distance cache (default 200). "
+			+ "When limit is reached, half of the cache is purged", 200);
+	public Input<Integer> ESSSampleSizeInput = new Input<>("sampleSize",
+			"number of trees used to calculated psuedo ESS (default 10)", 10);
+
 	List<Tree>[] trees;
 	int nChains;
 
 	// number of consecutive trees added where the 
 	// PSRF criterion passes, but the pseudo ESS criterion fails
-	int consecutive = 0;
-	int targetESS;
-	double smoothing, upper, lower;
+	private int consecutive = 0;
+	private int targetESS;
+	private double smoothing, upper, lower;
+
+	private int cacheLimit;
+	// delta = gap between sampled trees due to cache pruning
+	private int delta = 1;
+	private int N;
+
 	
 	@Override
 	public void initAndValidate() {
 		smoothing = smoothingInput.get();
 		targetESS = targetESSInput.get();
+		cacheLimit = cacheLimitInput.get();
+		N = ESSSampleSizeInput.get();
 		double b = bInput.get();
 		upper = 1.0 + b;
 		lower = 1.0 - b;
@@ -52,7 +65,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		
 		List<Double> psrf1 = new ArrayList<>();
 		List<Double> psrf2 = new ArrayList<>();
-		for (int x = start; x < end; x++) {
+		for (int x = start; x < end; x += delta) {
 			psrf1.add(calcPSRF(0, 1, x, start, end));
 			psrf2.add(calcPSRF(1, 0, x, start, end));
 		}
@@ -60,12 +73,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		double psrf2mean = mean(psrf1);
 		
 		if (lower < psrf1mean && psrf1mean < upper && lower < psrf2mean && psrf2mean < upper) {
-			consecutive++;
+			consecutive += delta;
 			if (consecutive >= targetESS) {
                 int cutStart = end - consecutive + 1;
                 int cutEnd = end;
-                if (pseudoEss(0, cutStart, cutEnd) >= targetESS && 
-                	pseudoEss(1, cutStart, cutEnd) >= targetESS) {
+                if (pseudoESS(0, cutStart, cutEnd) >= targetESS && 
+                	pseudoESS(1, cutStart, cutEnd) >= targetESS) {
                 	return true;
                 }
 			}
@@ -77,34 +90,44 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	
-	final static int N = 10;
 
-	private double pseudoEss(int treeSet, int cutStart, int cutEnd) {
+	// collects ESSs for N trees and returns the mean (should be median?)
+	private double pseudoESS(int treeSet, int cutStart, int cutEnd) {
+		
 		// subsample N trees in range [cutStart, cutEnd]
+		cutStart = cutStart - cutStart % delta;
 		int [] indices = new int[N];
 		for (int i = 0; i < N; i++) {
-			indices[i] = cutStart + (cutEnd-cutStart) * i / N;
+			int offset = (cutEnd-cutStart) * i / N;
+			offset = offset - offset % delta;
+			indices[i] = cutStart + offset;
 		}
 
 		// calc sum of distances to the trees with index from `indices`
-		List<Double> trace = new ArrayList<>(cutEnd - cutStart);
-		for (int i = cutStart; i < cutEnd; i++) {
+		Double [][] trace = new Double[N][(cutEnd-cutStart)/delta];
+		for (int i = cutStart; i < cutEnd; i += delta) {
 			double d = 0;
-			int counts = 0;
-			for (int j = 0; j <N; j++) {
+			for (int j = 0; j < N; j++) {
 				if (i != indices[j]) {
 					// only include average distance to other trees
 					d += distancePlusOne(treeSet, i, treeSet, indices[j]);
-					counts++;
 				}
+				trace[j][i/delta] = d;
 			}
-			d /= counts;
-			trace.add(d);
 		}
 
-		// calc ESS for the trace
-		double ess = ESS.calcESS(trace);
-		return ess;
+		// calc ESS for each trace
+		double [] ess = new double[N];
+		for (int j = 0; j < N; j += 1) {
+			ess[j] = ESS.calcESS(trace[j], 1);
+		}
+		// calculate mean ESS
+		double sum = 0;
+		for (double d : ess) {
+			sum +=d;
+		}
+		double meanESS = sum / N;
+		return meanESS * delta;
 	}
 
 	private double mean(List<Double> psrf) {

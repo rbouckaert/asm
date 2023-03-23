@@ -58,9 +58,19 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		for (List<Tree> t : trees) {
 			end = Math.min(end, t.size());
 		}
-		int start = (int)(end * smoothing);
-		if (end - start < targetESS) {
+		if (end % delta != 0) {
+			// only check when end us divisible by delta
 			return false;
+		}
+		int start = (int)(end * smoothing);
+		start = start - start % delta;
+		if ((end - start) * delta < targetESS) {
+			return false;
+		}
+		
+		if (end/delta > cacheLimit) {
+			delta *= 2;
+			return converged();
 		}
 		
 		List<Double> psrf1 = new ArrayList<>();
@@ -95,7 +105,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	private double pseudoESS(int treeSet, int cutStart, int cutEnd) {
 		
 		// subsample N trees in range [cutStart, cutEnd]
-		cutStart = cutStart - cutStart % delta;
 		int [] indices = new int[N];
 		for (int i = 0; i < N; i++) {
 			int offset = (cutEnd-cutStart) * i / N;
@@ -141,12 +150,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 
 	private Double calcPSRF(int treeSet1, int treeSet2, int k, int start, int end) {
 		double varIn = 0;
-		for (int i = start; i < end; i++) {
+		for (int i = start; i < end; i += delta) {
 			double d = distancePlusOne(treeSet1, k, treeSet1, i);
 			varIn += d * d;
 		}
 		double varBetween = 0;
-		for (int i = start; i < end; i++) {
+		for (int i = start; i < end; i += delta) {
 			double d = distancePlusOne(treeSet1, k, treeSet2, i);
 			varBetween += d * d;
 		}

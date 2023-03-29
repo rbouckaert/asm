@@ -127,6 +127,7 @@ public class AutoStopMCMC extends MCMC {
 	@SuppressWarnings("unchecked")
 	@Override 
 	public void run() throws IOException {
+		long start = System.currentTimeMillis();
 		// memory for trees & tree distances
 		trees = new List[m_chains.length];
 		for (int i = 0; i < m_chains.length; i++) {
@@ -171,12 +172,15 @@ public class AutoStopMCMC extends MCMC {
 			}
 		}
 		
-		// wait 5 seconds for the log to complete
+		// wait 2 seconds for the log to complete and close before exiting the process
+		Log.warning("Wait for the log to complete");
 		try {
-			Thread.sleep(5000);
+			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			// ingore
 		}
+		long end = System.currentTimeMillis();
+		Log.warning("All done in " + (end-start)/1000.0 + " seconds");
 	} // run
 	
 	/** Represents class that tails all logs files and tree log files.

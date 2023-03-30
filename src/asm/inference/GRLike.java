@@ -16,7 +16,8 @@ import beastlabs.evolution.tree.RNNIMetric;
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
 public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
-	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how proportion of trees to disregard", 0.1);
+	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how proportion of trees to disregard: "
+			+ "larger smoothing means more trees included in test", 0.6);
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
 
 	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
@@ -34,7 +35,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 
 	// number of consecutive trees added where the 
 	// PSRF criterion passes, but the pseudo ESS criterion fails
-	private int consecutive = 0;
+	private int start0 = -1;
 	private int targetESS;
 	private double smoothing, upper, lower;
 
@@ -63,6 +64,14 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		cacheLimit = cacheLimitInput.get();
 		if (cacheLimit <= 0 ) {
 			throw new IllegalArgumentException("cacheLimit should be positive, not " + cacheLimit);
+		}
+		if (cacheLimit <= targetESS ) {
+			throw new IllegalArgumentException("cacheLimit (" + cacheLimit+ ") should be at least as big as targetESS, "
+					+ " (" + targetESS +"), preferrably at least twice as large");
+		}
+		if (cacheLimit < 2*targetESS ) {
+			Log.warning("cacheLimit (" + cacheLimit+ ") should preferrably be twice as large as targetESS, "
+					+ " (" + targetESS +") to prevent late stopping");
 		}
 		
 		N = ESSSampleSizeInput.get();
@@ -98,15 +107,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 				// only check when end us divisible by delta
 				return false;
 			}
-			int start = (int)(end * smoothing);
+			int start = (int)(end * (1.0-smoothing));
 			start = start - start % delta;
-			// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
-			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
-			// so we need at least one more tree to make the pseudoESS >= targetESS
-			if ((end - start) * delta <= targetESS) {
-				return false;
-			}
-			
+	
 			if (end/delta > cacheLimit) {
 				delta *= 2;
 				Log.warning("Delta=" + delta);	
@@ -144,28 +147,36 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 				Log.info("psrf2mean = " + psrf2mean);
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
-					consecutive += delta;
-				//if (consecutive >= targetESS) {
-	                int cutStart = start; // end - consecutive + 1;
+					if (start0 < 0) {
+						start0 = start;
+					}
+	    			// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
+	    			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
+	    			// so we need at least one more tree to make the pseudoESS >= targetESS
+	    			if ((end - start0) <= targetESS) {
+	    				return false;
+	    			}
+	                int cutStart = start0; 
 	                int cutEnd = end;
+	                cutStart = cutStart - cutStart % delta;
+	                
 	                if (pseudoESS(0, cutStart, cutEnd) >= targetESS && 
 	                	pseudoESS(1, cutStart, cutEnd) >= targetESS) {
 	                	return true;
 	                }
-				//}
 				}
 			}
 			if (!(lower < psrf1mean && psrf1mean < upper && lower < psrf2mean && psrf2mean < upper)) {
-				consecutive = 0;
+				start0 = -1;
 			}
 		} catch (Throwable e) {
 			// converged();
 			Log.warning("Programmer error: Something is WRONG and needs fixing:");
 			e.printStackTrace();
-			consecutive = 0;
+			start0 = -1;
 			return false;
 		}
-		Log.info.print(consecutive + " ");
+		Log.info.print(start0 + " ");
 		return false;
 	}
 
@@ -180,14 +191,8 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 				// only check when end us divisible by delta
 				return false;
 			}
-			int start = (int)(end * smoothing);
+			int start = (int)(end * (1.0-smoothing));
 			start = start - start % delta;
-			// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
-			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
-			// so we need at least one more tree to make the pseudoESS >= targetESS
-			if ((end - start) * delta <= targetESS) {
-				return false;
-			}
 			
 			if (end/delta > cacheLimit) {
 				delta *= 2;
@@ -203,26 +208,35 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			
 			Log.info("\npsrf1mean = " + psrf1mean);
 			if (lower < psrf1mean && psrf1mean < upper) {
-					consecutive += delta;
-				//if (consecutive >= targetESS) {
-	                int cutStart = start; // end - consecutive + 1;
-	                int cutEnd = end;
-	                if (pseudoESS(side-0, cutStart, cutEnd) >= targetESS) {
-	                	return true;
-	                }
-				//}
+				
+				
+				if (start0 < 0) {
+					start0 = start;
+				}
+				// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
+				// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
+				// so we need at least one more tree to make the pseudoESS >= targetESS
+    			if ((end - start0) <= targetESS) {
+    				return false;
+    			}
+                int cutStart = start0; 
+                cutStart = cutStart - cutStart % delta;
+                int cutEnd = end;
+                if (pseudoESS(side-0, cutStart, cutEnd) >= targetESS) {
+                	return true;
+                }
 			}
 			if (!(lower < psrf1mean && psrf1mean < upper)) {
-				consecutive = 0;
+				start0 = -1;
 			}
 		} catch (Throwable e) {
 			// converged();
 			Log.warning("Programmer error: Something is WRONG and needs fixing:");
 			e.printStackTrace();
-			consecutive = 0;
+			start0 = -1;
 			return false;
 		}
-		Log.info.print(consecutive + " ");
+		Log.info.print(start0 + " ");
 		return false;
 	}	
 
@@ -261,10 +275,10 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		for (double d : ess) {
 			sum +=d;
 		}
-		double meanESS = sum / N;
+		double meanESS = delta * sum / N;
 		
-		Log.info("pseudoESS = " + meanESS * delta);
-		return meanESS * delta;
+		Log.info("pseudoESS = " + meanESS);
+		return meanESS;
 	}
 
 	private double mean(double [] psrf) {

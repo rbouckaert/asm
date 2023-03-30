@@ -55,6 +55,9 @@ public class AutoStopMCMC extends MCMC {
 	int m_iTreeLog = 0;
 	int m_iLog = 0;
 
+	
+	private boolean slept = false;
+
 	@Override
 	public void initAndValidate() {
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
@@ -217,6 +220,7 @@ public class AutoStopMCMC extends MCMC {
 				while (true) {
 					int nLinesRead = 0;
 					// grab a tree from every thread
+					slept = false;
 					while (nLinesRead < nThreads*2) {
 						boolean [] bDone = new boolean[nThreads*2];
 						for (int i = 0; i < nThreads*2; i++) {
@@ -231,31 +235,42 @@ public class AutoStopMCMC extends MCMC {
 						if (nLinesRead< nThreads*2) {
 							// wait a second before seeing if there is more
 							sleep(1000);
+							slept = true;
 						}
 					}
 					
-					boolean converged = true;
-					long start = System.currentTimeMillis();
-					for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
-						if (!crit.converged()) {
-							converged = false;
-							break;
-						}
+					if (!slept && m_nLastReported > 1) {
+						// Log.warning("Checks cannot keep up with log files: expect ESSs higher than targetESS");
 					}
-					long end = System.currentTimeMillis();					
-					Log.info("Check " + m_nLastReported + " " + converged + " in " + (end-start) + " mseconds");
-					if (converged) {
-						// stop all threads
-						for (MCMCChain t : m_chains) {
-							t.terminate();
-						}
+					if (check()) {
 						return;
 					}
-					m_nLastReported++;				
+					m_nLastReported++;	
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+		}
+
+		private boolean check() {
+			boolean converged = true;
+			long start = System.currentTimeMillis();
+			for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
+				if (!crit.converged()) {
+					converged = false;
+					break;
+				}
+			}
+			long end = System.currentTimeMillis();					
+			Log.info("Check " + m_nLastReported + " " + converged + " in " + (end-start) + " mseconds");
+			if (converged) {
+				// stop all threads
+				for (MCMCChain t : m_chains) {
+					t.terminate();
+				}
+				return true;
+			}
+			return false;
 		}	
 	} // class LogWatcherThread
 	
@@ -317,6 +332,7 @@ public class AutoStopMCMC extends MCMC {
 				try {
 					// wait 2.5 seconds till tree becomes available
 					Thread.sleep(2500);
+					slept = true;
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

@@ -2,7 +2,6 @@ package asm.inference;
 
 
 import java.text.DecimalFormat;
-import java.util.Arrays;
 import java.util.List;
 
 import beast.base.core.BEASTObject;
@@ -29,8 +28,8 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 
 	public Input<Boolean> twoSidedInput = new Input<>("twoSided", "if true (default) psrfs and pseudo ESSs for both chains are used,"
 			+ "otherwise only one psrfs and pseudo ESS is calculated, which takes less computation but can be less robust", true);
-
 	
+	TraceInfo traceInfo;
 	List<Tree>[] trees;
 	int nChains;
 
@@ -47,7 +46,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	
 	private boolean twoSided;
 
-	private DistanceMatrixCache cache = new DistanceMatrixCache(1024);
 	private DecimalFormat f = new DecimalFormat("#.###");
 	private DecimalFormat f1 = new DecimalFormat("#.#");
 	
@@ -327,120 +325,11 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	
-	class DistanceMatrixCache {
-		// symmetric 2d distance matrix for trees 1
-		float [] cache11;
-		// symmetric 2d distance matrix for trees 2
-		float [] cache22;
-		// asymmetric 2d distance matrix between trees 1 and trees 2
-		// represented by lower triangle and upper triangle half-matrices
-		float [] cache12, cache21, diagonal;
-		// matrix size
-		int size;
-		
-		DistanceMatrixCache(int n) {
-			cache11 = new float[n*(n-1)/2];
-			cache22 = new float[n*(n-1)/2];
-			cache12 = new float[n*(n-1)/2];
-			cache21 = new float[n*(n-1)/2];
-			diagonal = new float[n];
-		}
-		
-		float getDistance(int treeSet1, int index1, int treeSet2, int index2) {
-			if (index1 >= size || index2 >= size) {
-				// resize
-				Log.warning("Resizing cache from " + size + " to " + (size+1024));
-				size += 1024;
-				cache11 = Arrays.copyOf(cache11, size*(size-1)/2);
-				cache22 = Arrays.copyOf(cache22, size*(size-1)/2);
-				cache12 = Arrays.copyOf(cache12, size*(size-1)/2);
-				cache21 = Arrays.copyOf(cache21, size*(size-1)/2);
-				diagonal = Arrays.copyOf(diagonal, size);
-			}
-			
-			if (treeSet1 == 0) {
-				if (treeSet2 == 0) {
-					int i = index1 > index2 ?  
-						index1 * (index1 - 1)/2 + index2:
-						index2 * (index2 - 1)/2 + index1;
-					return cache11[i];
-				} else {
-					if (index1 > index2) {  
-						int i = index1 * (index1 - 1)/2 + index2;
-						return cache12[i];
-					} else if (index1 < index2) {  
-						int i = index2 * (index2 - 1)/2 + index1;
-						return cache21[i];
-					} else {
-						return diagonal[index1];
-					}
-				}
-			} else {
-				if (treeSet2 == 0) {
-					if (index1 > index2) {  
-						int i = index1 * (index1 - 1)/2 + index2;
-						return cache21[i];
-					} else if (index1 < index2) {
-						int i = index2 * (index2 - 1)/2 + index1;
-						return cache12[i];
-					} else {
-						return diagonal[index1];
-					}
-				} else {
-					int i = index1 > index2 ?  
-							index1 * (index1 - 1)/2 + index2:
-							index2 * (index2 - 1)/2 + index1;
-					return cache22[i];
-				}
-			}			
-		}
-
-		void setDistance(int treeSet1, int index1, int treeSet2, int index2, float d) {
-			if (treeSet1 == 0) {
-				if (treeSet2 == 0) {
-					int i = index1 > index2 ?  
-						index1 * (index1 - 1)/2 + index2:
-						index2 * (index2 - 1)/2 + index1;
-					cache11[i] = d;
-				} else {
-					if (index1 > index2) {  
-						int i = index1 * (index1 - 1)/2 + index2;
-						cache12[i] = d;
-					} else if (index1 < index2) {
-						int i = index2 * (index2 - 1)/2 + index1;
-						cache21[i] = d;
-					} else {
-						diagonal[index1] = d;
-					}
-				}
-			} else {
-				if (treeSet2 == 0) {
-					if (index1 > index2) {  
-						int i = index1 * (index1 - 1)/2 + index2;
-						cache21[i] = d;
-					} else if (index1 < index2) {
-						int i = index2 * (index2 - 1)/2 + index1;
-						cache12[i] = d;
-					} else {
-						diagonal[index1] = d;
-					}
-				} else {
-					int i = index1 > index2 ?  
-							index1 * (index1 - 1)/2 + index2:
-							index2 * (index2 - 1)/2 + index1;
-					cache22[i] = d;
-				}
-			}			
-			
-		}
-	}
-	
-	
 	private float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
 		if (treeSet1 == treeSet2 && index1 == index2) {
 			return 0+1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		}
-		float d = cache.getDistance(treeSet1, index1, treeSet2, index2);
+		float d = traceInfo.distances.getDistance(treeSet1, index1, treeSet2, index2);
 		if (d > 0) {
 			return d;
 		}
@@ -449,7 +338,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		TreeInterface tree2 = trees[treeSet2].get(index2);
 		RNNIMetric m = new RNNIMetric();
 		d = (float) m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
-		cache.setDistance(treeSet1, index1, treeSet2, index2, d);
+		traceInfo.distances.setDistance(treeSet1, index1, treeSet2, index2, d);
 		
 		// System.err.print(treeSet1 + "x" + treeSet2 + "[" + index1 + "," + index2+"] ");
 		// System.out.print(".");
@@ -457,8 +346,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
-		this.trees = trees;
+	public void setup(int nChains, TraceInfo traceInfo) {
+		this.traceInfo = traceInfo;
+		if (traceInfo.distances == null) {
+			traceInfo.distances = new DistanceMatrixCache(1024);
+		}
+		this.trees = traceInfo.trees;
 		this.nChains = nChains;
 		if (nChains != 2) {
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);

@@ -65,9 +65,9 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	}
 
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
+	public void setup(int nChains, TraceInfo traceInfo) {
 		this.nChains = nChains;
-		this.trees = trees;
+		this.trees = traceInfo.trees;
 		m_fMaxCladeProbDiffs = new ArrayList<>();
 		m_cladeMaps = new Map[nChains];
 		for (int i = 0; i < nChains; i++) {

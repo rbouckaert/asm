@@ -10,6 +10,7 @@
                 <provider classname="asm.inference.GelmanRubin"/>
                 <provider classname="asm.inference.CladeDifference"/>
                 <provider classname="asm.inference.GRLike"/>
+                <provider classname="asm.inference.TreeESS"/>
     	</service>
     	
 </package>

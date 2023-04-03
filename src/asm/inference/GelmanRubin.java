@@ -99,9 +99,9 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 
 	
 	@Override
-	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees) {
+	public void setup(int nChains, TraceInfo traceInfo) {
 		this.nChains = nChains;
-		m_logTables = logLines;
+		m_logTables = traceInfo.m_logLines;
 	}
 	
 }

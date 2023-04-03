@@ -38,15 +38,15 @@ public class AutoStopMCMC extends MCMC {
 	/** keep track of time taken between logs to estimate speed **/
     long m_nStartLogTime;
 	
-    /** tables of logs, one for each thread + one for the total**/
-	List<Double>[][] m_logLines;
+
+    TraceInfo traceInfo;
+
+	
 	
 	/** last line for which log is reported for all chains */
 	int m_nLastReported = 0;
 	
 	
-    /** tables of trees, one for each thread + one for the total **/
-	List<Tree> [] trees;
 	
 	List<PairewiseConvergenceCriterion> stoppingCriteria;
 	
@@ -132,15 +132,10 @@ public class AutoStopMCMC extends MCMC {
 	public void run() throws IOException {
 		long start = System.currentTimeMillis();
 		// memory for trees & tree distances
-		trees = new List[m_chains.length];
-		for (int i = 0; i < m_chains.length; i++) {
-			trees[i] = new ArrayList<>();
-		}
-
-		m_logLines = new List[m_chains.length][];
+		traceInfo = new TraceInfo(m_chains.length);
 		
 		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
-			stoppingCriterium.setup(m_chains.length, m_logLines, trees);
+			stoppingCriterium.setup(m_chains.length, traceInfo);
 		}
 
 		// start threads with individual chains here.
@@ -291,20 +286,20 @@ public class AutoStopMCMC extends MCMC {
 			} while (sStr.startsWith(("#")) || sStrs.length == 1); // ignore comment lines
 			int nItems = sStrs.length;
 			
-			if (m_logLines[0] == null) {
+			if (traceInfo.m_logLines[0] == null) {
 				for (int i = 0; i < m_chains.length; i++) {
-					m_logLines[i] = new List[nItems];
+					traceInfo.m_logLines[i] = new List[nItems];
 				}
 				for (int i = 0; i < m_chains.length; i++) {
 					for (int j = 0; j < nItems; j++) {
-						m_logLines[i][j] = new ArrayList<>();
+						traceInfo.m_logLines[i][j] = new ArrayList<>();
 					}
 				}
 			}
 			
 			try {
 				for (int i = 0; i < nItems; i++) {
-					m_logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
+					traceInfo.m_logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
 				}
 			} catch (Exception e) {
 				//ignore, probably a parse errors
@@ -348,7 +343,7 @@ public class AutoStopMCMC extends MCMC {
 		Node root = parser.parseNewick(sStr);
 		parser.setRoot(root);
 		Tree tree = parser.copy();
-		trees[iThread].add(tree);
+		traceInfo.trees[iThread].add(tree);
 		return true;
 	} // readTreeLogLine
 

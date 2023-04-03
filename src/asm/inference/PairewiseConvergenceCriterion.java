@@ -17,10 +17,8 @@ public interface PairewiseConvergenceCriterion {
 	/**
 	 * initialise memory based on number of chains
 	 * @param nChains number of chains
-	 * @param logLines TODO
-	 * @param trees TODO
 	 */
-	public void setup(int nChains, List<Double>[][] logLines, List<Tree>[] trees);
+	public void setup(int nChains, TraceInfo traceInfo);
 	
 	
 	// public void process(int chainNr, Double [] logLine, Node root);

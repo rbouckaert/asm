@@ -1,53 +1,41 @@
 package asm.inference;
 
 
-import java.text.DecimalFormat;
 import java.util.List;
 
-import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
 import beast.base.evolution.tree.Tree;
-import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.util.ESS;
-import beastlabs.evolution.tree.RNNIMetric;
 
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
-public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion {
-	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
-	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how proportion of trees to disregard: "
-			+ "larger smoothing means more trees included in test", 0.6);
+public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
-
-	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
-			"Maximum size of the tree distance cache (default 1024). "
-			+ "When limit is reached, half of the cache is purged", 1024);
-	public Input<Integer> ESSSampleSizeInput = new Input<>("sampleSize",
-			"number of trees used to calculated psuedo ESS (default 32)", 32);
 
 	public Input<Boolean> twoSidedInput = new Input<>("twoSided", "if true (default) psrfs and pseudo ESSs for both chains are used,"
 			+ "otherwise only one psrfs and pseudo ESS is calculated, which takes less computation but can be less robust", true);
 	
-	TraceInfo traceInfo;
-	List<Tree>[] trees;
-	int nChains;
+	public Input<Boolean> checkESSInput = new Input<>("checkESS", "whether to check Tree ESS exceeds the targetESS", false);
+
+	//	TraceInfo traceInfo;
+//	List<Tree>[] trees;
+//	int nChains;
 
 	// number of consecutive trees added where the 
 	// PSRF criterion passes, but the pseudo ESS criterion fails
 	private int start0 = -1;
-	private int targetESS;
+//	private int targetESS;
 	private double smoothing, upper, lower;
 
-	private int cacheLimit;
+//	private int cacheLimit;
 	// delta = gap between sampled trees due to cache pruning
-	private int delta = 1;
-	private int N;
+//	private int delta = 1;
+//	private int N;
 	
-	private boolean twoSided;
+	private boolean twoSided, checkESS;
 
-	private DecimalFormat f = new DecimalFormat("#.###");
-	private DecimalFormat f1 = new DecimalFormat("#.#");
+//	private DecimalFormat f = new DecimalFormat("#.###");
+//	private DecimalFormat f1 = new DecimalFormat("#.#");
 	
 	@Override
 	public void initAndValidate() {
@@ -85,6 +73,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		}
 		
 		twoSided = twoSidedInput.get();
+		checkESS = checkESSInput.get();
 		
 		double b = bInput.get();
 		upper = 1.0 + b;
@@ -93,21 +82,21 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	@Override
-	public boolean converged() {
+	public boolean converged(int end) {
 		if (twoSided) {
-			return converged2sided();
+			return converged2sided(end);
 			// return converged1sided(0) && converged1sided(1); 
 		} else {
-			return converged1sided(0);
+			return converged1sided(0, end);
 		}
 	}
 
-	public boolean converged2sided() {
+	public boolean converged2sided(int end) {
 		try { 
-			int end = Integer.MAX_VALUE;
-			for (List<Tree> t : trees) {
-				end = Math.min(end, t.size());
-			}
+//			int end = Integer.MAX_VALUE;
+//			for (List<Tree> t : trees) {
+//				end = Math.min(end, t.size());
+//			}
 			if (end % delta != 0) {
 				// only check when end us divisible by delta
 				return false;
@@ -118,7 +107,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			if (end/delta > cacheLimit) {
 				delta *= 2;
 				Log.warning("Delta=" + delta);	
-				return converged();
+				return converged(end);
 			}
 
 			// This following commented out code follows the original pseudo code
@@ -155,6 +144,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 				Log.info.print("psrf2mean = " + f.format(psrf2mean)+ " ");
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
+					if (!checkESS) {
+						return true;
+					}
 	    			// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
 	    			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
 	    			// so we need at least one more tree to make the pseudoESS >= targetESS
@@ -166,7 +158,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	                int cutEnd = end;
 	                cutStart = cutStart - cutStart % delta;
 	                
-	                if (pseudoESS(0, cutStart, cutEnd) >= targetESS && 
+	                if (checkESS || pseudoESS(0, cutStart, cutEnd) >= targetESS && 
 	                	pseudoESS(1, cutStart, cutEnd) >= targetESS) {
 	                	return true;
 	                }
@@ -190,12 +182,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	}
 
 	
-	public boolean converged1sided(int side) {
+	public boolean converged1sided(int side, int end) {
 		try { 
-			int end = Integer.MAX_VALUE;
-			for (List<Tree> t : trees) {
-				end = Math.min(end, t.size());
-			}
+//			int end = Integer.MAX_VALUE;
+//			for (List<Tree> t : trees) {
+//				end = Math.min(end, t.size());
+//			}
 			if (end % delta != 0) {
 				// only check when end us divisible by delta
 				return false;
@@ -206,7 +198,7 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			if (end/delta > cacheLimit) {
 				delta *= 2;
 				Log.warning("Delta=" + delta);	
-				return converged();
+				return converged(end);
 			}
 
 			double [] psrf = new double[(end-start)/delta]; 
@@ -217,7 +209,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			
 			Log.info("\npsrf1mean = " + psrf1mean);
 			if (lower < psrf1mean && psrf1mean < upper) {
-				
+				if (!checkESS) {
+					return true;
+				}
 				
 				if (start0 < 0) {
 					start0 = start;
@@ -250,46 +244,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		return false;
 	}	
 
-	// collects ESSs for N trees and returns the mean (should be median?)
-	private double pseudoESS(int treeSet, int cutStart, int cutEnd) {
-		
-		// subsample N trees in range [cutStart, cutEnd]
-		int [] indices = new int[N];
-		for (int i = 0; i < N; i++) {
-			int offset = (cutEnd-cutStart) * i / N;
-			offset = offset - offset % delta;
-			indices[i] = cutStart + offset;
-		}
-
-		// calc sum of distances to the trees with index from `indices`
-		Double [][] trace = new Double[N][(cutEnd-cutStart)/delta - 1];
-		int [] k = new int[N];
-		for (int i = cutStart; i < cutEnd; i += delta) {
-			for (int j = 0; j < N; j++) {
-				if (i != indices[j]) {
-					// only include distance to other trees
-					trace[j][k[j]++] = (double) distancePlusOne(treeSet, i, treeSet, indices[j]);
-				}
-			}
-		}
-
-		// calc ESS for each trace
-		double [] ess = new double[N];
-		// TODO: use incremental ESS calculation
-		// instead of calculating it from scratch every time
-		for (int j = 0; j < N; j += 1) {
-			ess[j] = ESS.calcESS(trace[j], 1);
-		}
-		// calculate mean ESS
-		double sum = 0;
-		for (double d : ess) {
-			sum +=d;
-		}
-		double meanESS = sum / N;
-		
-		Log.info.print("pseudoESS = " + f1.format(meanESS) + " ");
-		return meanESS;
-	}
 
 	private double mean(double [] psrf) {
 		double sum = 0;
@@ -300,14 +254,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		return mean;
 	}
 	
-	private double mean(List<Double> psrf) {
-		double sum = 0;
-		for (double d : psrf) {
-			sum += d;
-		}
-		double mean = sum / psrf.size();
-		return mean;
-	}
 
 	private Double calcPSRF(int treeSet1, int treeSet2, int k, int start, int end) {
 		double varIn = 0;
@@ -322,27 +268,6 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		}
 		double psrf = Math.sqrt(varBetween/varIn);
 		return psrf;
-	}
-
-	
-	private float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
-		if (treeSet1 == treeSet2 && index1 == index2) {
-			return 0+1; // +1 so that we can use 0 to detect whether the distance is in the cache
-		}
-		float d = traceInfo.distances.getDistance(treeSet1, index1, treeSet2, index2);
-		if (d > 0) {
-			return d;
-		}
-		
-		TreeInterface tree1 = trees[treeSet1].get(index1);
-		TreeInterface tree2 = trees[treeSet2].get(index2);
-		RNNIMetric m = new RNNIMetric();
-		d = (float) m.distance(tree1, tree2) + 1; // +1 so that we can use 0 to detect whether the distance is in the cache
-		traceInfo.distances.setDistance(treeSet1, index1, treeSet2, index2, d);
-		
-		// System.err.print(treeSet1 + "x" + treeSet2 + "[" + index1 + "," + index2+"] ");
-		// System.out.print(".");
-		return d;
 	}
 
 	@Override

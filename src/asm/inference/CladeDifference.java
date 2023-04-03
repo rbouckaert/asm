@@ -12,7 +12,7 @@ import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 
 @Description("Pairwise convergence criterion based on the difference in clade support between the chains")
-public class CladeDifference extends BEASTObject implements PairewiseConvergenceCriterion {
+public class CladeDifference extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Double> acceptedThresholdInput = new Input<>("threshold", "level at which the biggest clade support difference is still acceptable", 0.25);
 
 	/** maximum difference of clade probabilities for chain 1 & 2 **/
@@ -38,12 +38,12 @@ public class CladeDifference extends BEASTObject implements PairewiseConvergence
 	private int current = 0;
 	
 	@Override
-	public boolean converged() {
+	public boolean converged(int available) {
 		// see if any of the trees has not been processed yet
-		int available = trees[0].size();
-		for (List<Tree> d : trees) {
-			available = Math.min(available, d.size());
-		}
+//		int available = trees[0].size();
+//		for (List<Tree> d : trees) {
+//			available = Math.min(available, d.size());
+//		}
 		// if so, process these trees
 		for (int i = current; i < available; i++) {
 			for (int j = 0; j < nChains; j++) {

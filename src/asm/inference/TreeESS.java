@@ -15,7 +15,7 @@ import beast.base.inference.util.ESS;
 import beastlabs.evolution.tree.RNNIMetric;
 
 @Description("Tree ESS criterion for convergence based on trees alone")
-public class TreeESS extends BEASTObject implements PairewiseConvergenceCriterion {
+public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
 	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how proportion of trees to disregard: "
 			+ "larger smoothing means more trees included in test", 0.9);
@@ -26,20 +26,20 @@ public class TreeESS extends BEASTObject implements PairewiseConvergenceCriterio
 	public Input<Integer> ESSSampleSizeInput = new Input<>("sampleSize",
 			"number of trees used to calculated psuedo ESS (default 10)", 10);
 
-	TraceInfo traceInfo;
-	List<Tree>[] trees;
-	int nChains;
+	protected TraceInfo traceInfo;
+	protected List<Tree>[] trees;
+	protected int nChains;
 
-	private int targetESS;
-	private double smoothing;
+	protected int targetESS;
+	protected double smoothing;
 
-	private int cacheLimit;
+	protected int cacheLimit;
 	// delta = gap between sampled trees due to cache pruning
-	private int delta = 1;
-	private int N;
+	protected int delta = 1;
+	protected int N;
 	
-	private DecimalFormat f = new DecimalFormat("#.###");
-	private DecimalFormat f1 = new DecimalFormat("#.#");
+	protected DecimalFormat f = new DecimalFormat("#.###");
+	protected DecimalFormat f1 = new DecimalFormat("#.#");
 	
 	@Override
 	public void initAndValidate() {
@@ -78,11 +78,11 @@ public class TreeESS extends BEASTObject implements PairewiseConvergenceCriterio
 	}
 
 	@Override
-	public boolean converged() {
-		int end = Integer.MAX_VALUE;
-		for (List<Tree> t : trees) {
-			end = Math.min(end, t.size()-1);
-		}
+	public boolean converged(int end) {
+//		int end = Integer.MAX_VALUE;
+//		for (List<Tree> t : trees) {
+//			end = Math.min(end, t.size()-1);
+//		}
 		end = end - end % delta;
 		
 //		if (end % delta != 0) {
@@ -93,13 +93,13 @@ public class TreeESS extends BEASTObject implements PairewiseConvergenceCriterio
 		
 		if (end/delta > cacheLimit) {
 			delta *= 2;
-			if (indices != null) {
-				for (int i = 0; i < N; i++) {
-					indices[i] = indices[i] - indices[i] % delta;
-				}
-			}
-			Log.warning("Delta=" + delta);	
-			return converged();
+//			if (indices != null) {
+//				for (int i = 0; i < N; i++) {
+//					indices[i] = indices[i] - indices[i] % delta;
+//				}
+//			}
+			Log.warning("TreeESS Delta=" + delta);	
+			return converged(end);
 		}
 
 		int start = (int)(end * (1.0-smoothing));
@@ -167,7 +167,7 @@ public class TreeESS extends BEASTObject implements PairewiseConvergenceCriterio
 		return meanESS;
 	}
 
-	private float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
+	protected float distancePlusOne(int treeSet1, int index1, int treeSet2, int index2) {
 		if (treeSet1 == treeSet2 && index1 == index2) {
 			return 0+1; // +1 so that we can use 0 to detect whether the distance is in the cache
 		}

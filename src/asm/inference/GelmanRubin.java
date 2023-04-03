@@ -11,7 +11,7 @@ import beast.base.evolution.tree.Tree;
 
 @Description("Checks the Gelman Rubin statistic for all items in trace log and "
 		+ "between every pair of chains.")
-public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCriterion {
+public class GelmanRubin extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Double> acceptedThresholdInput = new Input<>("threshold", "level at which the biggest GR value is still acceptable", 1.05);
 
     /** tables of logs, one for each thread + one for the total**/
@@ -30,11 +30,11 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 	}
 
 	@Override
-	public boolean converged() {
-		int available = m_logTables[0][0].size();
-		for (List<Double>[] d : m_logTables) {
-			available = Math.min(available, d[0].size());
-		}
+	public boolean converged(int available) {
+//		int available = m_logTables[0][0].size();
+//		for (List<Double>[] d : m_logTables) {
+//			available = Math.min(available, d[0].size());
+//		}
 		
 		// check all items for all pairs
 		int nItems = m_logTables[0].length;
@@ -101,7 +101,7 @@ public class GelmanRubin extends BEASTObject implements PairewiseConvergenceCrit
 	@Override
 	public void setup(int nChains, TraceInfo traceInfo) {
 		this.nChains = nChains;
-		m_logTables = traceInfo.m_logLines;
+		m_logTables = traceInfo.logLines;
 	}
 	
 }

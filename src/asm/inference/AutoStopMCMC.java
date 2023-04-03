@@ -27,7 +27,7 @@ import beast.base.parser.XMLProducer;
 		"Note that the log and tree log should have the same sample frequency.")
 public class AutoStopMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<>("chains", "number of chains to run in parallel (default 2)", 2);
-	public Input<List<PairewiseConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
+	public Input<List<MCMCConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	MCMCChain [] m_chains;
@@ -48,7 +48,7 @@ public class AutoStopMCMC extends MCMC {
 	
 	
 	
-	List<PairewiseConvergenceCriterion> stoppingCriteria;
+	List<MCMCConvergenceCriterion> stoppingCriteria;
 	
 
 	/** index of log and tree log among the MCMC loggers**/
@@ -134,7 +134,7 @@ public class AutoStopMCMC extends MCMC {
 		// memory for trees & tree distances
 		traceInfo = new TraceInfo(m_chains.length);
 		
-		for (PairewiseConvergenceCriterion stoppingCriterium : stoppingCriteria) {
+		for (MCMCConvergenceCriterion stoppingCriterium : stoppingCriteria) {
 			stoppingCriterium.setup(m_chains.length, traceInfo);
 		}
 
@@ -252,8 +252,8 @@ public class AutoStopMCMC extends MCMC {
 			
 			boolean converged = true;
 			long start = System.currentTimeMillis();
-			for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
-				if (!crit.converged()) {
+			for (MCMCConvergenceCriterion crit : stoppingCriteria) {
+				if (!crit.converged(m_nLastReported)) {
 					converged = false;
 					break;
 				}
@@ -286,20 +286,20 @@ public class AutoStopMCMC extends MCMC {
 			} while (sStr.startsWith(("#")) || sStrs.length == 1); // ignore comment lines
 			int nItems = sStrs.length;
 			
-			if (traceInfo.m_logLines[0] == null) {
+			if (traceInfo.logLines[0] == null) {
 				for (int i = 0; i < m_chains.length; i++) {
-					traceInfo.m_logLines[i] = new List[nItems];
+					traceInfo.logLines[i] = new List[nItems];
 				}
 				for (int i = 0; i < m_chains.length; i++) {
 					for (int j = 0; j < nItems; j++) {
-						traceInfo.m_logLines[i][j] = new ArrayList<>();
+						traceInfo.logLines[i][j] = new ArrayList<>();
 					}
 				}
 			}
 			
 			try {
 				for (int i = 0; i < nItems; i++) {
-					traceInfo.m_logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
+					traceInfo.logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
 				}
 			} catch (Exception e) {
 				//ignore, probably a parse errors

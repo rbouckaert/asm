@@ -1,18 +1,16 @@
 package asm.inference;
 
 
-import java.util.List;
 
 import beast.base.core.Description;
-import beast.base.evolution.tree.Tree;
 
-@Description("Determine convergence based on two running chains")
-public interface PairewiseConvergenceCriterion {
+@Description("Determine convergence based on one or more running chains")
+public interface MCMCConvergenceCriterion {
 
 	/**
 	 * @return true if the pair of chains converged
 	 */
-	boolean converged();
+	boolean converged(int end);
 
 	/**
 	 * initialise memory based on number of chains
@@ -20,6 +18,14 @@ public interface PairewiseConvergenceCriterion {
 	 */
 	public void setup(int nChains, TraceInfo traceInfo);
 	
+	
+	/**
+	 * @return column header name of the convergence criterion for screen logging
+	 */
+	default public String header() {
+		return getClass().getSimpleName();
+	}
+
 	
 	// public void process(int chainNr, Double [] logLine, Node root);
 }

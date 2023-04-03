@@ -7,7 +7,7 @@ import beast.base.evolution.tree.Tree;
 
 public class TraceInfo {
     /** tables of logs, one for each thread + one for the total**/
-	List<Double>[][] m_logLines;
+	List<Double>[][] logLines;
 	
     /** tables of trees, one for each thread + one for the total **/
 	List<Tree> [] trees;
@@ -20,8 +20,7 @@ public class TraceInfo {
 			trees[i] = new ArrayList<>();
 		}
 
-		m_logLines = new List[chainCount][];
-
+		logLines = new List[chainCount][];
 	}
 	
 }

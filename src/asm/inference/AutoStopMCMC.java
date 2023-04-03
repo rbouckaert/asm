@@ -253,6 +253,8 @@ public class AutoStopMCMC extends MCMC {
 		}
 
 		private boolean check() {
+			Log.info.print("Check " + m_nLastReported + " ");
+			
 			boolean converged = true;
 			long start = System.currentTimeMillis();
 			for (PairewiseConvergenceCriterion crit : stoppingCriteria) {
@@ -262,7 +264,8 @@ public class AutoStopMCMC extends MCMC {
 				}
 			}
 			long end = System.currentTimeMillis();					
-			Log.info("Check " + m_nLastReported + " " + converged + " in " + (end-start) + " mseconds");
+			//Log.info.println((converged?"Succss!":"failed") + " in " + (end-start) + " mseconds");
+			Log.info.println(" in " + (end-start) + " mseconds");
 			if (converged) {
 				// stop all threads
 				for (MCMCChain t : m_chains) {
@@ -331,7 +334,7 @@ public class AutoStopMCMC extends MCMC {
 			if (sStr == null) {
 				try {
 					// wait 2.5 seconds till tree becomes available
-					Thread.sleep(2500);
+					Thread.sleep(1000);
 					slept = true;
 				} catch (Exception e) {
 					e.printStackTrace();

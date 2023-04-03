@@ -1,6 +1,7 @@
 package asm.inference;
 
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -21,10 +22,10 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
 
 	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
-			"Maximum size of the tree distance cache (default 256). "
-			+ "When limit is reached, half of the cache is purged", 256);
+			"Maximum size of the tree distance cache (default 1024). "
+			+ "When limit is reached, half of the cache is purged", 1024);
 	public Input<Integer> ESSSampleSizeInput = new Input<>("sampleSize",
-			"number of trees used to calculated psuedo ESS (default 10)", 10);
+			"number of trees used to calculated psuedo ESS (default 32)", 32);
 
 	public Input<Boolean> twoSidedInput = new Input<>("twoSided", "if true (default) psrfs and pseudo ESSs for both chains are used,"
 			+ "otherwise only one psrfs and pseudo ESS is calculated, which takes less computation but can be less robust", true);
@@ -47,10 +48,13 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	private boolean twoSided;
 
 	private DistanceMatrixCache cache = new DistanceMatrixCache(1024);
-
+	private DecimalFormat f = new DecimalFormat("#.###");
+	private DecimalFormat f1 = new DecimalFormat("#.#");
 	
 	@Override
 	public void initAndValidate() {
+		f.setMinimumFractionDigits(3);
+		f1.setMinimumFractionDigits(1);
 		smoothing = smoothingInput.get();
 		if (smoothing < 0 || smoothing >= 1) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
@@ -77,6 +81,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		N = ESSSampleSizeInput.get();
 		if (N <= 0 ) {
 			throw new IllegalArgumentException("sampleSize should be positive, not " + N);
+		}
+		if (N >= targetESS ) {
+			throw new IllegalArgumentException("sampleSize should be less than targetESS ("+targetESS+"), not " + N);
 		}
 		
 		twoSided = twoSidedInput.get();
@@ -138,22 +145,23 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 			double psrf1mean = mean(psrf);
 			double psrf2mean = 0;
 			
-			Log.info("\npsrf1mean = " + psrf1mean);
+			Log.info.print("psrf1mean = " + f.format(psrf1mean) + " ");
 			if (lower < psrf1mean && psrf1mean < upper) {
+				if (start0 < 0) {
+					start0 = start;
+				}
 				for (int x = start; x < end; x += delta) {
 					psrf[(x-start)/delta] = calcPSRF(1, 0, x, start, end);
 				}
 				psrf2mean = mean(psrf);
-				Log.info("psrf2mean = " + psrf2mean);
+				Log.info.print("psrf2mean = " + f.format(psrf2mean)+ " ");
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
-					if (start0 < 0) {
-						start0 = start;
-					}
 	    			// Next condition has "<=" instead of "<", since the pseudoESS later on is based on
 	    			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
 	    			// so we need at least one more tree to make the pseudoESS >= targetESS
 	    			if ((end - start0) <= targetESS) {
+	    				Log.info.print("not enough samples ");
 	    				return false;
 	    			}
 	                int cutStart = start0; 
@@ -164,9 +172,12 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 	                	pseudoESS(1, cutStart, cutEnd) >= targetESS) {
 	                	return true;
 	                }
+	        		Log.info.print(start0 + " ");
+	                return false;
 				}
 			}
-			if (!(lower < psrf1mean && psrf1mean < upper && lower < psrf2mean && psrf2mean < upper)) {
+			if (lower <= psrf1mean || psrf1mean >= upper || lower <= psrf2mean || psrf2mean >= upper) {
+				Log.info.print("reset start ");
 				start0 = -1;
 			}
 		} catch (Throwable e) {
@@ -225,8 +236,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
                 if (pseudoESS(side-0, cutStart, cutEnd) >= targetESS) {
                 	return true;
                 }
+                return false;
 			}
-			if (!(lower < psrf1mean && psrf1mean < upper)) {
+			if (lower >= psrf1mean || psrf1mean >= upper) {
 				start0 = -1;
 			}
 		} catch (Throwable e) {
@@ -275,9 +287,9 @@ public class GRLike extends BEASTObject implements PairewiseConvergenceCriterion
 		for (double d : ess) {
 			sum +=d;
 		}
-		double meanESS = delta * sum / N;
+		double meanESS = sum / N;
 		
-		Log.info("pseudoESS = " + meanESS);
+		Log.info.print("pseudoESS = " + f1.format(meanESS) + " ");
 		return meanESS;
 	}
 

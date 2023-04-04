@@ -3,6 +3,7 @@ package asm.inference;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -180,10 +181,75 @@ public class AutoStopMCMC extends MCMC {
 		} catch (InterruptedException e) {
 			// ingore
 		}
+		
+		combinelogs(burnInDetector.burnIn(m_nLastReported));
+		
+		
 		long end = System.currentTimeMillis();
 		Log.warning("All done in " + (end-start)/1000.0 + " seconds");
 	} // run
 	
+	private void combinelogs(int[] burnIn) throws IOException {
+		for (Logger logger: loggersInput.get()) {
+			if (logger.fileNameInput.get() != null && logger.fileNameInput.get().length() > 0) {
+
+				long sampleNr = 0;
+				long sampleDelta = (long)(traceInfo.logLines[0][0].get(1) - traceInfo.logLines[0][0].get(0));
+				logger.init();
+				PrintStream out = logger.getM_out();
+				if (logger.mode == Logger.LOGMODE.tree) {
+					
+					for (int i = 0; i < nrOfChainsInput.get(); i++) {
+						// tree log
+				        BufferedReader fin = new BufferedReader(new FileReader("chain" + i + "-" + logger.fileNameInput.get()));
+				        String str = null;
+				        
+				        // skip burnin
+				        int skipped = 0;
+				        while (fin.ready() && skipped < burnIn[i]) {
+				            str = fin.readLine();
+				            if (str.matches("^tree STATE.*")) {
+				            	skipped++;
+				            }
+				        }
+
+				        // append trees to log
+				        while (fin.ready()) {
+				            str = fin.readLine();
+				            if (str.matches("^tree STATE.*")) {
+			                    str = str.replaceAll("^tree STATE_[^\\s]*", "");
+			                	out.print("tree STATE_" + sampleNr + str);
+			                	out.println();
+								sampleNr += sampleDelta;
+				            }
+				        }
+				        
+				        fin.close();
+					}					
+				} else {
+					
+					// trace log
+					for (int i = 0; i < nrOfChainsInput.get(); i++) {
+						List<Double> [] logLines = traceInfo.logLines[i];
+						int j = burnIn[i];
+						while (j < logLines[0].size()) {
+							out.print(sampleNr);
+							out.print('\t');
+							for (int k = 1; k < logLines.length; k++) {
+								out.print(logLines[k].get(j));
+								out.print('\t');
+							}
+							out.print('\n');
+							sampleNr += sampleDelta;
+							j++;
+						}
+					}
+				}
+				logger.close();
+			}
+		}
+	}
+
 	/** Represents class that tails all logs files and tree log files.
 	 * When a new line is added, this is processed */ 
 	class LogWatcherThread extends Thread {

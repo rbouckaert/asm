@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -40,6 +41,7 @@ public class AutoStopMCMC extends MCMC {
 	
 
     TraceInfo traceInfo;
+    BurnInDetector burnInDetector;
 
 	
 	
@@ -133,6 +135,7 @@ public class AutoStopMCMC extends MCMC {
 		long start = System.currentTimeMillis();
 		// memory for trees & tree distances
 		traceInfo = new TraceInfo(m_chains.length);
+		burnInDetector = new BurnInDetector(traceInfo);
 		
 		for (MCMCConvergenceCriterion stoppingCriterium : stoppingCriteria) {
 			stoppingCriterium.setup(m_chains.length, traceInfo);
@@ -252,10 +255,12 @@ public class AutoStopMCMC extends MCMC {
 			
 			boolean converged = true;
 			long start = System.currentTimeMillis();
+			int [] burnin = burnInDetector.burnIn(m_nLastReported);
+			Log.info.print("burnin:" + Arrays.toString(burnin));
 			for (MCMCConvergenceCriterion crit : stoppingCriteria) {
-				if (!crit.converged(m_nLastReported)) {
+				if (!crit.converged(burnin, m_nLastReported)) {
 					converged = false;
-					break;
+					// break;
 				}
 			}
 			long end = System.currentTimeMillis();					
@@ -286,6 +291,11 @@ public class AutoStopMCMC extends MCMC {
 			} while (sStr.startsWith(("#")) || sStrs.length == 1); // ignore comment lines
 			int nItems = sStrs.length;
 			
+			if (sStr.startsWith("Sample")) {
+				traceInfo.labels = sStr.split("\\s+");
+				return false;
+			}
+
 			if (traceInfo.logLines[0] == null) {
 				for (int i = 0; i < m_chains.length; i++) {
 					traceInfo.logLines[i] = new List[nItems];
@@ -299,7 +309,11 @@ public class AutoStopMCMC extends MCMC {
 			
 			try {
 				for (int i = 0; i < nItems; i++) {
-					traceInfo.logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
+					try {
+						traceInfo.logLines[iThread][i].add(Double.parseDouble(sStrs[i]));
+					} catch (NumberFormatException e) {
+						traceInfo.logLines[iThread][i].add(0.0);
+					}
 				}
 			} catch (Exception e) {
 				//ignore, probably a parse errors

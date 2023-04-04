@@ -17,7 +17,7 @@ import beastlabs.evolution.tree.RNNIMetric;
 @Description("Tree ESS criterion for convergence based on trees alone")
 public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
-	public Input<Double> smoothingInput = new Input<>("smooting", "smoothing factor, which determines how proportion of trees to disregard: "
+	public Input<Double> smoothingInput = new Input<>("smoothing", "smoothing factor, which determines how proportion of trees to disregard: "
 			+ "larger smoothing means more trees included in test", 0.9);
 
 	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
@@ -38,13 +38,9 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	protected int delta = 1;
 	protected int N;
 	
-	protected DecimalFormat f = new DecimalFormat("#.###");
-	protected DecimalFormat f1 = new DecimalFormat("#.#");
 	
 	@Override
 	public void initAndValidate() {
-		f.setMinimumFractionDigits(3);
-		f1.setMinimumFractionDigits(1);
 		smoothing = smoothingInput.get();
 		if (smoothing < 0 || smoothing >= 1) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
@@ -78,7 +74,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	}
 
 	@Override
-	public boolean converged(int end) {
+	public boolean converged(int[] burnin, int end) {
 //		int end = Integer.MAX_VALUE;
 //		for (List<Tree> t : trees) {
 //			end = Math.min(end, t.size()-1);
@@ -99,7 +95,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 //				}
 //			}
 			Log.warning("TreeESS Delta=" + delta);	
-			return converged(end);
+			return converged(burnin, end);
 		}
 
 		int start = (int)(end * (1.0-smoothing));
@@ -163,7 +159,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 		}
 		double meanESS = sum / N;
 		
-		Log.info.print("pseudoESS = " + f1.format(meanESS) + " ");
+		Log.info.print("pseudoESS = " + traceInfo.f1.format(meanESS) + " ");
 		return meanESS;
 	}
 

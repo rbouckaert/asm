@@ -7,7 +7,6 @@ import java.util.List;
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.evolution.tree.Tree;
 
 @Description("Checks the Gelman Rubin statistic for all items in trace log and "
 		+ "between every pair of chains.")
@@ -30,7 +29,7 @@ public class GelmanRubin extends BEASTObject implements MCMCConvergenceCriterion
 	}
 
 	@Override
-	public boolean converged(int available) {
+	public boolean converged(int[] burnin, int available) {
 //		int available = m_logTables[0][0].size();
 //		for (List<Double>[] d : m_logTables) {
 //			available = Math.min(available, d[0].size());

@@ -1,12 +1,10 @@
 package asm.inference;
 
 
-import java.util.List;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
-import beast.base.evolution.tree.Tree;
 
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
 public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
@@ -39,8 +37,6 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	
 	@Override
 	public void initAndValidate() {
-		f.setMinimumFractionDigits(3);
-		f1.setMinimumFractionDigits(1);
 		smoothing = smoothingInput.get();
 		if (smoothing < 0 || smoothing >= 1) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
@@ -82,16 +78,16 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	}
 
 	@Override
-	public boolean converged(int end) {
+	public boolean converged(int[] burnin, int end) {
 		if (twoSided) {
-			return converged2sided(end);
+			return converged2sided(burnin, end);
 			// return converged1sided(0) && converged1sided(1); 
 		} else {
-			return converged1sided(0, end);
+			return converged1sided(0, burnin, end);
 		}
 	}
 
-	public boolean converged2sided(int end) {
+	public boolean converged2sided(int[] burnin, int end) {
 		try { 
 //			int end = Integer.MAX_VALUE;
 //			for (List<Tree> t : trees) {
@@ -107,7 +103,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 			if (end/delta > cacheLimit) {
 				delta *= 2;
 				Log.warning("Delta=" + delta);	
-				return converged(end);
+				return converged(burnin, end);
 			}
 
 			// This following commented out code follows the original pseudo code
@@ -132,7 +128,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 			double psrf1mean = mean(psrf);
 			double psrf2mean = 0;
 			
-			Log.info.print("psrf1mean = " + f.format(psrf1mean) + " ");
+			Log.info.print("psrf1mean = " + traceInfo.f.format(psrf1mean) + " ");
 			if (lower < psrf1mean && psrf1mean < upper) {
 				if (start0 < 0) {
 					start0 = start;
@@ -141,7 +137,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 					psrf[(x-start)/delta] = calcPSRF(1, 0, x, start, end);
 				}
 				psrf2mean = mean(psrf);
-				Log.info.print("psrf2mean = " + f.format(psrf2mean)+ " ");
+				Log.info.print("psrf2mean = " + traceInfo.f.format(psrf2mean)+ " ");
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
 					if (!checkESS) {
@@ -182,7 +178,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	}
 
 	
-	public boolean converged1sided(int side, int end) {
+	public boolean converged1sided(int side, int[] burnin, int end) {
 		try { 
 //			int end = Integer.MAX_VALUE;
 //			for (List<Tree> t : trees) {
@@ -198,7 +194,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 			if (end/delta > cacheLimit) {
 				delta *= 2;
 				Log.warning("Delta=" + delta);	
-				return converged(end);
+				return converged(burnin, end);
 			}
 
 			double [] psrf = new double[(end-start)/delta]; 

@@ -8,9 +8,10 @@ import beast.base.core.Description;
 public interface MCMCConvergenceCriterion {
 
 	/**
+	 * @param burnin TODO
 	 * @return true if the pair of chains converged
 	 */
-	boolean converged(int end);
+	boolean converged(int[] burnin, int end);
 
 	/**
 	 * initialise memory based on number of chains

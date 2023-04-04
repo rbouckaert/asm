@@ -38,7 +38,7 @@ public class CladeDifference extends BEASTObject implements MCMCConvergenceCrite
 	private int current = 0;
 	
 	@Override
-	public boolean converged(int available) {
+	public boolean converged(int[] burnin, int available) {
 		// see if any of the trees has not been processed yet
 //		int available = trees[0].size();
 //		for (List<Tree> d : trees) {

@@ -11,6 +11,7 @@
                 <provider classname="asm.inference.CladeDifference"/>
                 <provider classname="asm.inference.GRLike"/>
                 <provider classname="asm.inference.TreeESS"/>
+                <provider classname="asm.inference.TraceESS"/>
     	</service>
     	
 </package>

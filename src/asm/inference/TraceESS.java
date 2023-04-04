@@ -22,6 +22,7 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 	protected double smoothing;
 
 	private IncrementalESS[][] esss;
+	private double[][] ess;
 	
 	@Override
 	public void initAndValidate() {
@@ -31,19 +32,28 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 
 	@Override
 	public boolean converged(int[] burnin, int end) {
-		double minESS = Double.POSITIVE_INFINITY;
+		// get ESSs
 		int [] map = traceInfo.getMap();
 		for (int i = 0; i < nChains; i++) {
 			for (int j = 0; j < esss[0].length; j++) {
 				// double value = logLines[i][map[j]].get(end);
 				// double ess = esss[i][j].log(value);
-				double ess = calcESS(logLines[i][map[j]], burnin[i], end);
-				Log.info.print(TraceInfo.f1.format(ess) + " ");
-				minESS = Math.min(ess,  minESS);
+				ess[i][j] = calcESS(logLines[i][map[j]], burnin[i], end);
+				Log.info.print(TraceInfo.f1.format(ess[i][j]) + " ");
 			}
 		}
-		Log.info.print(":" + traceInfo.f1.format(minESS) + "\t");
-		return minESS >= targetESS;
+		
+		// calculate minimal sum of ESSs
+		double minESS = Double.POSITIVE_INFINITY;
+		for (int j = 0; j < esss[0].length; j++) {
+			double sum = 0;
+			for (int i = 0; i < nChains; i++) {
+				sum += ess[i][j];
+			}
+			minESS = Math.min(sum,  minESS);
+		}
+		Log.info.print(":" + TraceInfo.f1.format(minESS) + "\t");
+		return minESS >= targetESS * nChains;
 	}
 	
 	
@@ -209,7 +219,7 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 				esss[i][j] = new IncrementalESS();
 			}
 		}
-		
+		ess = new double[nChains][3];
 	}
 
 

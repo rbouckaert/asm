@@ -35,6 +35,7 @@ public class BurnInDetector {
 	}
 	
 	private int burnIn(List<Double> trace, int end) {
+		int iStart = -1;
 		for (int i = 0; i < end - 10; i+= 2) {
 			int sampleCount = (end-i)/2;
 //			double gr = calcGRStat(i, sampleCount, i + sampleCount, trace);
@@ -47,9 +48,25 @@ public class BurnInDetector {
 //			}
 			
 			double overlap = rangeOverlap(i, sampleCount, i+sampleCount, trace);
-			if (overlap >= 0.8) {
-				return i;
+			if (overlap >= 0.75) {
+				iStart = i;
+				break;
 			}
+		}
+		
+		if (iStart > 0) {
+			// try to see if higher ESS can be achieved by adding more burnin 
+			int maxI = iStart;
+			double maxESS = 0;
+			int delta = Math.max(1,(end/2-iStart)/3); 
+			for (int i = iStart; i < end/2; i+= delta) {
+				double ess = TraceESS.calcESS(trace, i, end);
+				if (ess > maxESS) {
+					maxESS = ess;
+					maxI = iStart;
+				}
+			}		
+			return maxI;
 		}
 		return trace.size()-1;
 	}

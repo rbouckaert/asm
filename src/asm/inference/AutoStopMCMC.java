@@ -30,6 +30,7 @@ import beast.base.parser.XMLProducer;
 public class AutoStopMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<>("chains", "number of chains to run in parallel (default 2)", 2);
 	public Input<List<MCMCConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
+	public Input<Boolean> combineLogsInput = new Input<>("combineLogs", "create combined log with appropriate burn-ins at the end of the run", true);
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	MCMCChain [] m_chains;
@@ -182,7 +183,9 @@ public class AutoStopMCMC extends MCMC {
 			// ingore
 		}
 		
-		combinelogs(burnInDetector.burnIn(m_nLastReported));
+		if (combineLogsInput.get()) {
+			combinelogs(burnInDetector.burnIn(m_nLastReported));
+		}
 		
 		
 		long end = System.currentTimeMillis();
@@ -190,6 +193,7 @@ public class AutoStopMCMC extends MCMC {
 	} // run
 	
 	private void combinelogs(int[] burnIn) throws IOException {
+		Log.info("burnin:" + Arrays.toString(burnIn));
 		for (Logger logger: loggersInput.get()) {
 			if (logger.fileNameInput.get() != null && logger.fileNameInput.get().length() > 0) {
 
@@ -214,7 +218,8 @@ public class AutoStopMCMC extends MCMC {
 				        }
 
 				        // append trees to log
-				        while (fin.ready()) {
+				        // while (fin.ready()) {
+					    for (int j = burnIn[i]; j < m_nLastReported; j++) {
 				            str = fin.readLine();
 				            if (str.matches("^tree STATE.*")) {
 			                    str = str.replaceAll("^tree STATE_[^\\s]*", "");
@@ -230,22 +235,31 @@ public class AutoStopMCMC extends MCMC {
 					
 					// trace log
 					for (int i = 0; i < nrOfChainsInput.get(); i++) {
-						List<Double> [] logLines = traceInfo.logLines[i];
-						int j = burnIn[i];
-						while (j < logLines[0].size()) {
-							out.print(sampleNr);
-							out.print('\t');
-							for (int k = 1; k < logLines.length; k++) {
-								out.print(logLines[k].get(j));
-								out.print('\t');
-							}
-							out.print('\n');
+				        BufferedReader fin = new BufferedReader(new FileReader("chain" + i + "-" + logger.fileNameInput.get()));
+				        String str = null;
+				        // skip header
+				        while (fin.ready() && (str == null || !str.startsWith("Sample"))) {
+				            str = fin.readLine();
+				        }
+
+				        // skip burnin
+				        int skipped = 0;
+				        while (fin.ready() && skipped < burnIn[i]) {
+				            str = fin.readLine();
+				            skipped++;
+				        }
+
+				        // append items to log
+				        //while (fin.ready()) {
+					    for (int j = burnIn[i]; j < m_nLastReported; j++) {
+				            str = fin.readLine();
+				            str = str.replaceFirst("[0-9]+\t", "");
+							out.println(sampleNr + "\t" + str);
 							sampleNr += sampleDelta;
-							j++;
-						}
+				        }
+						fin.close();
 					}
 				}
-				logger.close();
 			}
 		}
 	}

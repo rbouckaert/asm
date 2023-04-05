@@ -24,6 +24,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	private int start0 = -1;
 //	private int targetESS;
 	private double smoothing, upper, lower;
+	private boolean prev = false;
 
 //	private int cacheLimit;
 	// delta = gap between sampled trees due to cache pruning
@@ -80,10 +81,12 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	@Override
 	public boolean converged(int[] burnin, int end) {
 		if (twoSided) {
-			return converged2sided(burnin, end);
+			prev = converged2sided(burnin, end);
+			return prev;
 			// return converged1sided(0) && converged1sided(1); 
 		} else {
-			return converged1sided(0, burnin, end);
+			prev = converged1sided(0, burnin, end);
+			return prev;
 		}
 	}
 
@@ -95,7 +98,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 //			}
 			if (end % delta != 0) {
 				// only check when end us divisible by delta
-				return false;
+				return prev;
 			}
 			int start = (int)(end * (1.0-smoothing));
 			start = start - start % delta;
@@ -186,7 +189,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 //			}
 			if (end % delta != 0) {
 				// only check when end us divisible by delta
-				return false;
+				return prev;
 			}
 			int start = (int)(end * (1.0-smoothing));
 			start = start - start % delta;

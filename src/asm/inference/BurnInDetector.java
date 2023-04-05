@@ -4,6 +4,7 @@ import java.util.List;
 
 import beast.base.core.Description;
 import beast.base.core.Log;
+import beast.base.math.MathUtils;
 
 @Description("Detects burnin as maximum of burnin of posterior, likelihood and prior based on "
 		+ "Gelman-Rubin statistic of first and second half of trace after burnin")
@@ -36,7 +37,40 @@ public class BurnInDetector {
 		return maxBurnin;
 	}
 	
+	
+	final static int WINDOW_SIZE = 10;
+	
 	private int burnIn(List<Double> trace, int end) {
+		// calc mean and stdev of last 25%
+		double m2 = 0, sq2 = 0;
+		int lb = 3*end/4;
+		for (int i = lb; i < end; i++) {
+			double d = trace.get(i);
+			m2 += d;
+		}
+		m2 = m2 / (end - lb);
+		for (int i = lb; i < end; i++) {
+			double d = trace.get(i);
+			sq2 += (d - m2) * (d - m2);
+		}
+		double stdev2 = Math.sqrt(sq2/(end-lb - 1));
+	
+		// pick first moving average that fits inside the m2 +/- stdev2 range
+		for (int i = 0; i + WINDOW_SIZE < lb; i++) {
+			double sum = 0;
+			for (int j = 0; j < WINDOW_SIZE; j++) {
+				sum += trace.get(i+j);
+			}
+			sum /= WINDOW_SIZE;
+			if (m2 - stdev2 < sum && sum < m2 + stdev2) {
+				return i + WINDOW_SIZE;
+			}
+		}
+		return lb;
+	}
+	
+	
+	private int burnIn2(List<Double> trace, int end) {
 		int iStart = -1;
 		for (int i = 1; i < end - 10; i+= 2) {
 			int sampleCount = (end-i)/2;
@@ -129,6 +163,8 @@ public class BurnInDetector {
 //			sq2 += d*d;
 //		}
 //		double stdev2 = Math.sqrt((m2 * m2 - sq2) / (sampleCount-1));
+//		m1 /= sampleCout;
+//		m2 /= sampleCout;
 //		
 //		double min1 = m1 - stdev1;
 //		double min2 = m2 - stdev2;

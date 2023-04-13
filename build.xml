@@ -124,8 +124,7 @@
 		<jar jarfile="${distASM}/ASM.src.jar">
 			<fileset dir="${srcASM}">
 				<include name="**/*.java" />
-				<include name="**/*.png" />
-				<include name="**/*.xsl" />
+				<include name="**/*.css" />
 			</fileset>
         </jar>
 		<jar jarfile="${distASM}/ASM.addon.jar">
@@ -135,7 +134,7 @@
 			<fileset dir="${buildASM}">
 				<include name="**/*.class" />
 				<include name="**/*.class" />
-				<include name="**/*.properties" />
+				<include name="**/*.css" />
 			</fileset>
 		</jar>
 	</target>

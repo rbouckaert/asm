@@ -2,6 +2,7 @@ package asm.tools;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 
 import beast.base.core.ProgramStatus;
 import beastfx.app.inputeditor.MyAction;
@@ -9,7 +10,6 @@ import beastfx.app.tools.LogAnalyser;
 import beastfx.app.util.Alert;
 import beastfx.app.util.FXUtils;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.event.ActionEvent;
@@ -75,6 +75,10 @@ public class Monitor extends Application {
 		public SimpleIntegerProperty getBIntegerProperty() {
 			return burnin;
 		}
+		
+		public int getIndex() {
+			return index;
+		}
 
 	};
 
@@ -112,7 +116,9 @@ public class Monitor extends Application {
 		pane.setLeft(table);
 
 		Scene scene = new Scene(pane, 1024, 600);
-		scene.getStylesheets().add("asm/tools/style.css");
+		URL url = Monitor.class.getResource("style.css");
+		String css = url.toExternalForm();
+		scene.getStylesheets().add(css);
 		stage.setScene(scene);
 		stage.show();
 	}

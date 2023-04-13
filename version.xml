@@ -14,4 +14,9 @@
                 <provider classname="asm.inference.TraceESS"/>
     	</service>
     	
+  <packageapp description="ASM chain monitor"
+              class="asm.tools.Monitor"
+              args=""
+            />
+
 </package>

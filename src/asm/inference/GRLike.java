@@ -126,7 +126,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 //			if (lower < psrf1mean && psrf1mean < upper && lower < psrf2mean && psrf2mean < upper) {
 			double [] psrf = new double[(end-start)/delta]; 
 			for (int x = start; x < end; x += delta) {
-				psrf[(x-start)/delta] = calcPSRF(0, 1, x, start, end);
+				psrf[(x-start)/delta] = calcPSRF(0, 1, x, burnin, end);
 			}
 			double psrf1mean = mean(psrf);
 			double psrf2mean = 0;
@@ -137,7 +137,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 					start0 = start;
 				}
 				for (int x = start; x < end; x += delta) {
-					psrf[(x-start)/delta] = calcPSRF(1, 0, x, start, end);
+					psrf[(x-start)/delta] = calcPSRF(1, 0, x, burnin, end);
 				}
 				psrf2mean = mean(psrf);
 				Log.info.print("psrf2mean = " + traceInfo.f.format(psrf2mean)+ " ");
@@ -202,7 +202,7 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 
 			double [] psrf = new double[(end-start)/delta]; 
 			for (int x = start; x < end; x += delta) {
-				psrf[(x-start)/delta] = calcPSRF(side-0, 1-side, x, start, end);
+				psrf[(x-start)/delta] = calcPSRF(side-0, 1-side, x, burnin, end);
 			}
 			double psrf1mean = mean(psrf);
 			
@@ -254,19 +254,28 @@ public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
 	}
 	
 
-	private Double calcPSRF(int treeSet1, int treeSet2, int k, int start, int end) {
+	private Double calcPSRF(int treeSet1, int treeSet2, int k, int [] burnin, int end) {
 		double varIn = 0;
+		int start = start(burnin[treeSet1]);
 		for (int i = start; i < end; i += delta) {
 			double d = distancePlusOne(treeSet1, k, treeSet1, i);
 			varIn += d * d;
 		}
 		double varBetween = 0;
+		start = start(burnin[treeSet2]);
 		for (int i = start; i < end; i += delta) {
 			double d = distancePlusOne(treeSet1, k, treeSet2, i);
 			varBetween += d * d;
 		}
 		double psrf = Math.sqrt(varBetween/varIn);
 		return psrf;
+	}
+
+	private int start(int start) {
+		if (start % delta != 0) {
+			start = start + delta- start % delta;
+		}
+		return start;
 	}
 
 	@Override

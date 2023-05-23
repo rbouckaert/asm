@@ -32,6 +32,7 @@ public class TreeConvergenceCheck extends Runnable {
 	public Input<Boolean> twoSidedInput = new Input<>("twoSided", "if true (default) psrfs and pseudo ESSs for both chains are used,"
 			+ "otherwise only one psrfs and pseudo ESS is calculated, which takes less computation but can be less robust", true);
 	public Input<Boolean> checkESSInput = new Input<>("checkESS", "whether to check Tree ESS exceeds the targetESS", false);
+	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
 	
 	
 	
@@ -56,7 +57,12 @@ public class TreeConvergenceCheck extends Runnable {
 				TraceInfo traceInfo = new TraceInfo(2);
 				traceInfo.setTrees(trees1, trees2);
 				GRLike grlike = new GRLike();
-				grlike.initByName("smoothing", smoothingInput.get(), "b", bInput.get(), "twoSided", twoSidedInput.get(), "checkESS", checkESSInput.get());
+				grlike.initByName(
+						"smoothing", smoothingInput.get(), 
+						"b", bInput.get(), 
+						"twoSided", twoSidedInput.get(), 
+						"checkESS", checkESSInput.get(),
+						"targetESS", targetESSInput.get());
 				grlike.setup(2, traceInfo);
 				int end = Math.min(trees1.size(), trees2.size());
 				int start = burnInPercentageInput.get() * end / 100; 

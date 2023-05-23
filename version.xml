@@ -18,5 +18,9 @@
               class="asm.tools.Monitor"
               args=""
             />
+  <packageapp description="Tree Convergence Check"
+              class="asm.tools.TreeConvergenceCheck"
+              args=""
+            />
 
 </package>

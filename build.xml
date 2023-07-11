@@ -201,12 +201,12 @@
 		<copy todir="${Add_on_dir}">
 			<fileset dir="${distASM}" includes="ASM.src.jar" />
 		</copy>
-		<!--
 		<copy todir="${Add_on_dir}/fxtemplates">
 			<fileset file="fxtemplates/ASM.xml" />
+			<!--
 			<fileset file="fxtemplates/methods.csv" />
+			-->
 		</copy>
-		-->
 		<jar jarfile="${distASM}/ASM.addon.v${ASMversion}.zip">
 			<fileset dir="${Add_on_dir}">
 				<include name="**/*" />

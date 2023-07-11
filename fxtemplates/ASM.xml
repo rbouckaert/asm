@@ -1,0 +1,67 @@
+<beast version='2.7'
+       namespace='beastfx.app.beauti:beastfx.app.inputeditor:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution'
+	templateinfo='template for standard phylogenetic analysis,&lt;br> supporting tip-date analysis and calibrations'>
+
+<map name='connect' reserved='true'>beastfx.app.inputeditor.BeautiConnector</map>
+<map name='subtemplate' reserved='true'>beastfx.app.inputeditor.BeautiSubTemplate</map>
+<map name='Uniform'>beast.base.inference.distribution.Uniform</map>
+<map name='Normal'>beast.base.inference.distribution.Normal</map>
+<map name='OneOnX'>beast.base.inference.distribution.OneOnX</map>
+<map name='LogNormal'>beast.base.inference.distribution.LogNormalDistributionModel</map>
+<map name='Exponential'>beast.base.inference.distribution.Exponential</map>
+<map name='Gamma'>beast.base.inference.distribution.Gamma</map>
+<map name='Beta'>beast.base.inference.distribution.Beta</map>
+<map name='LaplaceDistribution'>beast.base.inference.distribution.LaplaceDistribution</map>
+<map name='InverseGamma'>beast.base.inference.distribution.InverseGamma</map>
+<map name='prior'>beast.base.inference.distribution.Prior</map>
+
+<mergewith point='runnables'>
+        
+    <subtemplate id='AutomaticStoppingMCMCM' class='asm.inference.AutoStopMCMC' mainid='asm'
+        suppressInputs='
+        	asm.inference.AutoStopMCMC.operator,
+    		asm.inference.AutoStopMCMC.operatorschedule,
+    		asm.inference.AutoStopMCMC.state,
+    		asm.inference.AutoStopMCMC.distribution,
+    		asm.inference.AutoStopMCMC.init
+            '>
+<![CDATA[
+	<run id="asm" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2">
+		<stoppingCriterion spec="asm.inference.GRLike" cacheLimit="200" sampleSize="10" twoSided="true" smoothing="0.9" targetESS="100"/>
+        <stoppingCriterion spec="asm.inference.TraceESS" smoothing="0.9" targetESS="100"/>
+        
+		<operatorschedule id="OperatorSchedule" spec="OperatorSchedule"/>
+		
+        <state storeEvery='5000' id='state'>
+        </state>
+
+        <distribution spec="CompoundDistribution" id="posterior">
+            <distribution spec="CompoundDistribution" id="prior">
+            </distribution>
+            <distribution spec="CompoundDistribution" id="likelihood" useThreads="true">
+            </distribution>
+        </distribution>
+
+        <logger id='tracelog' logEvery="1000" fileName="$(filebase).log" sort="smart" sanitiseHeaders='true'>
+	        <model idref='posterior'/>
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+        </logger>
+
+        <logger id='screenlog' logEvery="1000">
+	        <!--model idref='posterior'/-->
+            <log idref="posterior"/>
+            <!--this ESS is computed solely based on the current BEAST run (not the chain)-->
+      	    <!--<ESS spec='ESS' name='log' arg="@posterior"/>-->
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+        </logger>
+    </run>
+]]>
+    </subtemplate>
+    
+</mergewith>
+
+</beast>
+

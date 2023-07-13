@@ -64,7 +64,7 @@ name="alignment">
 
 <run id="mcmc" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2">
         <stoppingCriterion spec="asm.inference.GRLike" sampleSize="1" targetESS="2" cacheLimit="128"/>
-        <stoppingCriterion spec="asm.inference.TreeESS" targetESS="100" cacheLimit="128"/>
+        <stoppingCriterion spec="asm.inference.TraceESS" targetESS="100" />
 
         <state id="state" spec="State" storeEvery="1000000">
         <tree id="Tree.t:xMCMC" spec="beast.base.evolution.tree.Tree" name="stateNode">

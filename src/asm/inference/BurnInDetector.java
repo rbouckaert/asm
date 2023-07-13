@@ -38,6 +38,16 @@ public class BurnInDetector {
 	}
 	
 	
+//	int burnIn(double [] trace) {
+//		int end = trace.length;
+//		for (int j = 0; j < end; j++) {
+//			if (check(j, trace)) {
+//				return j;
+//			}
+//		}
+//		return end;
+//	}
+	
 	final static int WINDOW_SIZE = 10;
 	
 	private int burnIn(List<Double> trace, int end) {

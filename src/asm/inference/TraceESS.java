@@ -1,6 +1,5 @@
 package asm.inference;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import beast.base.core.BEASTObject;
@@ -9,8 +8,6 @@ import beast.base.core.Log;
 
 public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
-	public Input<Double> smoothingInput = new Input<>("smoothing", "smoothing factor, which determines how proportion of trees to disregard: "
-			+ "larger smoothing means more trees included in test", 0.9);
 
 	protected TraceInfo traceInfo;
 	protected List<Double>[][] logLines;
@@ -19,14 +16,9 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 
 
 	protected int targetESS;
-	protected double smoothing;
-
-//	private IncrementalESS[][] esss;
-//	private double[][] ess;
 	
 	@Override
 	public void initAndValidate() {
-		smoothing = smoothingInput.get();
 		targetESS = targetESSInput.get();
 	}
 

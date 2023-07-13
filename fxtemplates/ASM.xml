@@ -1,6 +1,6 @@
 <beast version='2.7'
        namespace='beastfx.app.beauti:beastfx.app.inputeditor:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution'
-	templateinfo='template for standard phylogenetic analysis,&lt;br> supporting tip-date analysis and calibrations'>
+	templateinfo='template for automatic stopping of MCMC'>
 
 <map name='connect' reserved='true'>beastfx.app.inputeditor.BeautiConnector</map>
 <map name='subtemplate' reserved='true'>beastfx.app.inputeditor.BeautiSubTemplate</map>
@@ -23,12 +23,21 @@
     		asm.inference.AutoStopMCMC.operatorschedule,
     		asm.inference.AutoStopMCMC.state,
     		asm.inference.AutoStopMCMC.distribution,
-    		asm.inference.AutoStopMCMC.init
-            '>
+    		asm.inference.AutoStopMCMC.init,
+    		asm.inference.AutoStopMCMC.chainLength,
+    		asm.inference.AutoStopMCMC.storeEvery,
+    		asm.inference.AutoStopMCMC.sampleFromPrior,
+    		asm.inference.AutoStopMCMC.chains
+            '
+		hmc='
+			asm/numInitializationAttempts/=mcmc/numInitializationAttempts,
+			asm/preBurnin/=mcmc/preBurnin
+			'
+            >
 <![CDATA[
 	<run id="asm" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2">
 		<stoppingCriterion spec="asm.inference.GRLike" cacheLimit="200" sampleSize="10" twoSided="true" smoothing="0.9" targetESS="100"/>
-        <stoppingCriterion spec="asm.inference.TraceESS" smoothing="0.9" targetESS="100"/>
+        <stoppingCriterion spec="asm.inference.TraceESS" targetESS="100"/>
         
 		<operatorschedule id="OperatorSchedule" spec="OperatorSchedule"/>
 		

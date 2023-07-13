@@ -11,6 +11,7 @@ import java.util.Arrays;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
+import beast.base.core.ProgramStatus;
 import beast.base.inference.Logger;
 import beast.base.inference.MCMC;
 import beast.base.evolution.tree.Node;
@@ -64,6 +65,9 @@ public class AutoStopMCMC extends MCMC {
 
 	@Override
 	public void initAndValidate() {
+		if (ProgramStatus.name.equals("BEAUti")) {
+			return;
+		}
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
 		stoppingCriteria = new ArrayList<>();
 		stoppingCriteria.addAll(stoppingCriterionInput.get());

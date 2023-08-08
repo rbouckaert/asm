@@ -2,10 +2,12 @@ package asm.inference;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import beast.base.evolution.tree.Tree;
 
+/** collection of data from pairs of trace logs and pairs of tree logs **/
 public class TraceInfo {
 	
 	public static DecimalFormat f = new DecimalFormat("#.###");
@@ -21,6 +23,10 @@ public class TraceInfo {
 	List<Tree> [] trees;
 
 	DistanceMatrixCache distances;
+	
+	public List<Tree>[] getTrees() {
+		return trees;
+	}
 	
 	public TraceInfo(int chainCount) {
 		f.setMinimumFractionDigits(3);
@@ -69,6 +75,21 @@ public class TraceInfo {
 	public void setTrees(List<Tree> trees1, List<Tree> trees2) {
 		trees[0] = trees1;
 		trees[1] = trees2;
+	}
+
+	public void setUpMap(String tracesString) {
+		String [] traces = tracesString.split(",");
+		
+		map = new int[traces.length];
+		int k = 0;
+		for (String trace : traces) {
+			map[k] = indexOf(labels, trace.trim(), -1);
+			if (map[k] == -1) {
+				throw new IllegalArgumentException("Could not find label " + trace + " in trace log. "
+						+ "Use one of " + Arrays.toString(labels));
+			}
+			k++;
+		}
 	}
 
 }

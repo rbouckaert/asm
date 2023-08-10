@@ -50,10 +50,11 @@ public class TraceInfo {
 			return map;
 		}
 		if (labels != null) {
-			map = new int[3];
-			map[0] = indexOf(labels, "posterior", 1);
-			map[1] = indexOf(labels, "likelihood", 2);
-			map[2] = indexOf(labels, "prior", 3);
+			setUpMap(tracesString);
+//			map = new int[3];
+//			map[0] = indexOf(labels, "posterior", 1);
+//			map[1] = indexOf(labels, "likelihood", 2);
+//			map[2] = indexOf(labels, "prior", 3);
 			return map;
 		}
 		return DEFAULT_MAP;
@@ -77,9 +78,16 @@ public class TraceInfo {
 		trees[1] = trees2;
 	}
 
+	
+	String tracesString = null;
+	
 	public void setUpMap(String tracesString) {
+		if (labels == null) {
+			this.tracesString = tracesString;
+			return;
+		}
 		String [] traces = tracesString.split(",");
-		
+
 		map = new int[traces.length];
 		int k = 0;
 		for (String trace : traces) {

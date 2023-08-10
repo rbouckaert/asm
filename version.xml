@@ -9,7 +9,7 @@
                 <provider classname="asm.inference.MCMCChain"/>
                 <provider classname="asm.inference.GelmanRubin"/>
                 <provider classname="asm.inference.CladeDifference"/>
-                <provider classname="asm.inference.GRLike"/>
+                <provider classname="asm.inference.TreePSRF"/>
                 <provider classname="asm.inference.TreeESS"/>
                 <provider classname="asm.inference.TraceESS"/>
     	</service>
@@ -23,4 +23,6 @@
               args=""
             />
 
+
+	<map from="asm.inference.GRLike" to="asm.inference.TreePSRF"/>
 </package>

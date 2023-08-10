@@ -6,7 +6,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import asm.inference.GRLike;
+import asm.inference.TreePSRF;
 import asm.inference.TraceInfo;
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -18,7 +18,7 @@ import beastfx.app.treeannotator.TreeAnnotator;
 import beastfx.app.treeannotator.TreeAnnotator.FastTreeSet;
 import beastfx.app.util.TreeFile;
 
-@Description("Calculate pairwise GRLike statistics for tree sets")
+@Description("Calculate pairwise Tree PSRF statistics for tree sets")
 public class TreeConvergenceCheck extends Runnable {
 
 	final public Input<List<TreeFile>> treesInput = new Input<>("tree", "tree files to be compared. Need at least two.", new ArrayList<>());
@@ -56,19 +56,19 @@ public class TreeConvergenceCheck extends Runnable {
 				List<Tree> trees2 = getTrees(j);
 				TraceInfo traceInfo = new TraceInfo(2);
 				traceInfo.setTrees(trees1, trees2);
-				GRLike grlike = new GRLike();
-				grlike.initByName(
+				TreePSRF treePSRF = new TreePSRF();
+				treePSRF.initByName(
 						"smoothing", smoothingInput.get(), 
 						"b", bInput.get(), 
 						"twoSided", twoSidedInput.get(), 
 						"checkESS", checkESSInput.get(),
 						"targetESS", targetESSInput.get());
-				grlike.setup(2, traceInfo);
+				treePSRF.setup(2, traceInfo);
 				int end = Math.min(trees1.size(), trees2.size());
 				int start = burnInPercentageInput.get() * end / 100; 
 				Log.info("");
 				Log.info("Comparing " + treeFiles.get(i).getName() + " and " + treeFiles.get(j).getName());
-				boolean converged = grlike.converged(new int[] {start, start}, end);
+				boolean converged = treePSRF.converged(new int[] {start, start}, end);
 				Log.info("");
 				Log.info((converged ? "Converged" : "Not converged" ) + " according to the GRLike criterion");
 			}

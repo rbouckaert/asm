@@ -8,7 +8,7 @@ import beast.base.core.Log;
 
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
 public class GRLike extends TreeESS implements MCMCConvergenceCriterion {
-	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance bounds for PSFR like statistic", 0.05);
+	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance tolerance for PSFR like statistic", 0.05);
 
 	public Input<Boolean> twoSidedInput = new Input<>("twoSided", "if true (default) psrfs and pseudo ESSs for both chains are used,"
 			+ "otherwise only one psrfs and pseudo ESS is calculated, which takes less computation but can be less robust", true);

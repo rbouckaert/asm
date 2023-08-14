@@ -34,6 +34,8 @@ You can set parameters by clicking the TreePSRF button for the Gelman-Rubin-like
 
 # Paper 
 
-Lars Berling, Remco Bouckaert, Alex Gavryushkin.
-Automated convergence diagnostic for phylogenetic MCMC analyses
-BioRxiv 2023
+If you publish a paper using this package, please cite<br>
+Lars Berling, Remco Bouckaert, and Alex Gavryushkin<br>
+**Automated convergence diagnostic for phylogenetic MCMC analyses**<br>
+*BioRxiv 2023*<br>
+[https://doi.org/10.1101/2023.08.10.552869](https://doi.org/10.1101/2023.08.10.552869)<br>

@@ -25,10 +25,12 @@ Restart BEAUti before using the package.
 
 Set up the analysis as per usual for an MCMC analysis, then go the the MCMC tab.
 From the drop-down box select `Automatic Stopping MCMC`, and a number MCMC options disappear and are replaced by ASM options.
+
+<img width="916" alt="asm" src="https://raw.githubusercontent.com/rbouckaert/asm/main/doc/asm-select.png">
+
 You can set parameters by clicking the TreePSRF button for the Gelman-Rubin-like criterion or TraceESS button for the trace-ESS criterion.
 
-
-<img width="916" alt="asm" src="https://github.com/rbouckaert/asm/assets/3612959/cfe9e9f4-0fb2-4f13-9d68-781dcde8b3ac">
+<img width="916" alt="asm" src="https://raw.githubusercontent.com/rbouckaert/asm/main/doc/asm-options.png">
 
 
 

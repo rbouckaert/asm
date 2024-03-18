@@ -33,6 +33,9 @@ public class AutoStopMCMC extends MCMC {
 	public Input<List<MCMCConvergenceCriterion>> stoppingCriterionInput = new Input<>("stoppingCriterion", "one or more stopping criterion for tracking progress of the chains", new ArrayList<>());
 	public Input<Boolean> combineLogsInput = new Input<>("combineLogs", "create combined log with appropriate burn-ins at the end of the run", true);
 	
+    final public Input<List<Logger>> asmloggersInput =
+            new Input<>("asmlogger", "loggers for reporting progress of stopping criteria", new ArrayList<>());
+
 	/** plugins representing MCMC with model, loggers, etc **/
 	MCMCChain [] m_chains;
 	
@@ -54,6 +57,7 @@ public class AutoStopMCMC extends MCMC {
 	
 	
 	List<MCMCConvergenceCriterion> stoppingCriteria;
+	List<Logger> asmloggers;
 	
 
 	/** index of log and tree log among the MCMC loggers**/
@@ -69,6 +73,11 @@ public class AutoStopMCMC extends MCMC {
 			return;
 		}
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
+		
+		asmloggers = new ArrayList<>();
+		asmloggers.addAll(asmloggersInput.get());
+		asmloggersInput.get().clear();
+		
 		stoppingCriteria = new ArrayList<>();
 		stoppingCriteria.addAll(stoppingCriterionInput.get());
 		if (stoppingCriteria.size() == 0) {
@@ -143,6 +152,18 @@ public class AutoStopMCMC extends MCMC {
 		traceInfo = new TraceInfo(m_chains.length);
 		burnInDetector = new BurnInDetector(traceInfo);
 		
+		
+        //if (restoreFromFile) {
+        //	makeSureLogFilesAreSameLength();
+        //}
+		for (Logger asmlogger: asmloggers) {
+			try {
+				asmlogger.init();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
 		for (MCMCConvergenceCriterion stoppingCriterium : stoppingCriteria) {
 			stoppingCriterium.setup(m_chains.length, traceInfo);
 		}
@@ -191,6 +212,10 @@ public class AutoStopMCMC extends MCMC {
 			combinelogs(burnInDetector.burnIn(m_nLastReported));
 		}
 		
+		for (Logger asmlogger: asmloggers) {
+			asmlogger.close();
+		}
+
 		
 		long end = System.currentTimeMillis();
 		Log.warning("All done in " + (end-start)/1000.0 + " seconds");
@@ -350,6 +375,11 @@ public class AutoStopMCMC extends MCMC {
 			long end = System.currentTimeMillis();					
 			//Log.info.println((converged?"Succss!":"failed") + " in " + (end-start) + " mseconds");
 			Log.info.println(" in " + (end-start) + " mseconds");
+			
+			for (Logger asmlogger: asmloggers) {
+				asmlogger.log(m_nLastReported);
+			}
+			
 			if (converged) {
 				// stop all threads
 				for (MCMCChain t : m_chains) {

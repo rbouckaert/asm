@@ -184,6 +184,7 @@ public class AutoStopMCMC extends MCMC {
 					}
 				}
 			};
+			m_threads[k].setName("ASM-thread" + k);
 			m_threads[k].start();
 			k++;
 		}

@@ -1,6 +1,7 @@
 package asm.inference;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -179,7 +180,8 @@ public class AutoStopMCMC extends MCMC {
 				public void run() {
 					try {
 						mcmc.run();
-					} catch (Exception e) {
+					} catch (Throwable e) {
+						stopByException = true;
 						e.printStackTrace();
 					}
 				}
@@ -294,6 +296,8 @@ public class AutoStopMCMC extends MCMC {
 		}
 	}
 
+	static boolean stopByException = false;
+	
 	/** Represents class that tails all logs files and tree log files.
 	 * When a new line is added, this is processed */ 
 	class LogWatcherThread extends Thread {
@@ -309,10 +313,13 @@ public class AutoStopMCMC extends MCMC {
 				// wait a seconds, the log file should be available
 				sleep(1000);
 				// open files
-				while (nFilesOpened < nThreads*2) {
+				while (stopByException == false && nFilesOpened < nThreads*2) {
 					for (int i = 0; i < nThreads*2; i++) {
 						if (fin[i] == null) {
-							String sFileName = m_chains[i/2].loggersInput.get().get(i%2==0 ? m_iLog : m_iTreeLog).fileNameInput.get(); 
+							String sFileName = m_chains[i/2].loggersInput.get().get(i%2==0 ? m_iLog : m_iTreeLog).fileNameInput.get();
+							while (!new File(sFileName).exists()) {
+								sleep(1000);
+							}
 							fin[i] = new BufferedReader(new FileReader(sFileName));
 							if (fin[i] != null) {
 								nFilesOpened++;
@@ -329,7 +336,7 @@ public class AutoStopMCMC extends MCMC {
 					int nLinesRead = 0;
 					// grab a tree from every thread
 					slept = false;
-					while (nLinesRead < nThreads*2) {
+					while (stopByException == false && nLinesRead < nThreads*2) {
 						boolean [] bDone = new boolean[nThreads*2];
 						for (int i = 0; i < nThreads*2; i++) {
 							if (!bDone[i]) {
@@ -347,6 +354,13 @@ public class AutoStopMCMC extends MCMC {
 						}
 					}
 					
+					if (stopByException) {
+						for (MCMCChain t : m_chains) {
+							t.terminate();
+						}
+						return;
+					}
+
 					if (!slept && m_nLastReported > 1) {
 						// Log.warning("Checks cannot keep up with log files: expect ESSs higher than targetESS");
 					}

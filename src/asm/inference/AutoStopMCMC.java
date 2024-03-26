@@ -141,7 +141,7 @@ public class AutoStopMCMC extends MCMC {
 		int nEveryLog = m_chains[0].loggersInput.get().get(m_iLog).everyInput.get();
 		int nEveryTree = m_chains[0].loggersInput.get().get(m_iTreeLog).everyInput.get();
 		if (nEveryLog != nEveryTree) {
-			throw new IllegalArgumentException("log frequencey and tree log frequencey should be the same.");
+			throw new IllegalArgumentException("log frequency and tree log frequency should be the same.");
 		}
 	} // initAndValidate
 	
@@ -406,7 +406,7 @@ public class AutoStopMCMC extends MCMC {
 		}	
 	} // class LogWatcherThread
 	
-	/** read a line from the log, return true if successfull */
+	/** read a line from the log, return true if successful */
 	boolean readLogLines(int iThread, BufferedReader fin) {
 		try {
 			String sStr = null;

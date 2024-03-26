@@ -97,7 +97,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 //				end = Math.min(end, t.size());
 //			}
 			if (end % delta != 0) {
-				// only check when end us divisible by delta
+				// only check when end is divisible by delta
 				return prev;
 			}
 			int start = (int)(end * (1.0-smoothing));

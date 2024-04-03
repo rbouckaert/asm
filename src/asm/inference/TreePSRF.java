@@ -6,6 +6,10 @@ import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 @Description("Gelman-Rubin like criterion for convergence based on trees alone")
 public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 	public Input<Double> bInput = new Input<>("b", "threshold determining acceptance tolerance for PSFR like statistic", 0.05);
@@ -35,6 +39,16 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 
 //	private DecimalFormat f = new DecimalFormat("#.###");
 //	private DecimalFormat f1 = new DecimalFormat("#.#");
+
+	public double[] getGrValues() {
+		return grValues;
+	}
+
+	public void setGrValues(double[] grValues) {
+		this.grValues = grValues;
+	}
+
+	private double[] grValues;
 	
 	@Override
 	public void initAndValidate() {
@@ -129,6 +143,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 				psrf[(x-start)/delta] = calcPSRF(0, 1, x, burnin, end);
 			}
 			double psrf1mean = mean(psrf);
+			this.grValues[0] = psrf1mean; // Setting the value for logging
 			double psrf2mean = 0;
 			
 			Log.info.print("psrf1mean = " + traceInfo.f.format(psrf1mean) + " ");
@@ -140,6 +155,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 					psrf[(x-start)/delta] = calcPSRF(1, 0, x, burnin, end);
 				}
 				psrf2mean = mean(psrf);
+				this.grValues[1] = psrf2mean; // Setting the value for logging
 				Log.info.print("psrf2mean = " + traceInfo.f.format(psrf2mean)+ " ");
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
@@ -156,8 +172,8 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 	                int cutStart = start0; 
 	                int cutEnd = end;
 	                cutStart = cutStart - cutStart % delta;
-	                
-	                if (checkESS || pseudoESS(0, cutStart, cutEnd) >= targetESS && 
+
+	                if (checkESS || pseudoESS(0, cutStart, cutEnd) >= targetESS &&
 	                	pseudoESS(1, cutStart, cutEnd) >= targetESS) {
 	                	return true;
 	                }
@@ -205,6 +221,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 				psrf[(x-start)/delta] = calcPSRF(side-0, 1-side, x, burnin, end);
 			}
 			double psrf1mean = mean(psrf);
+			this.grValues[0] = psrf1mean; // Setting the value for logging
 			
 			Log.info("\npsrf1mean = " + psrf1mean);
 			if (lower < psrf1mean && psrf1mean < upper) {
@@ -267,7 +284,12 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 			double d = distancePlusOne(treeSet1, k, treeSet2, i);
 			varBetween += d * d;
 		}
-		double psrf = Math.sqrt(varBetween/varIn);
+		double psrf;
+		if (varIn != 0) {
+			psrf = Math.sqrt(varBetween / varIn);
+		} else {
+			psrf = Math.sqrt(varBetween);
+		}
 		return psrf;
 	}
 
@@ -289,8 +311,27 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 		if (nChains != 2) {
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
 		}
+		// Initializing the grValues -- used for logging
+		this.grValues = new double[nChains];
+		// setting it to -2.0 indicating it has not been calcualted for later postprocessing
+		Arrays.fill(grValues, -2.0);
 	}
 
+	public Map getLog() {
+		// Returns the log values that will be output to the ECCLogger file
+		Map<String, Double> logValues = new HashMap<>();
+
+		// Todo add the tree ESS values here? or somewhere else?
+		// Todo check whether the grValues each have been updated, if not no need to relog it?
+		//  this is because currently it only checks the first, if not within boundary it just goes on to the next
+		//  more efficient but harder to log sensibly
+		// todo why is there a NaN value in the beginning of the log?
+		for (int i = 0; i < this.nChains; i++) {
+			logValues.put("GRT-" + i, this.grValues[i]);
+		}
+
+		return logValues;
+	}
 
 
 

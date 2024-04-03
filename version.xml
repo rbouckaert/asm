@@ -11,7 +11,8 @@
                 <provider classname="asm.inference.CladeDifference"/>
                 <provider classname="asm.inference.TreePSRF"/>
                 <provider classname="asm.inference.TreeESS"/>
-                <provider classname="asm.inference.TraceESS"/>
+                <provider classname="asm.inference.TraceESS"/>\
+                <provider classname="asm.inference.GRTLogger"/>\
     	</service>
     	
   <packageapp description="ASM chain monitor"

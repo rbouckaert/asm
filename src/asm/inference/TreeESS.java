@@ -28,6 +28,9 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	protected TraceInfo traceInfo;
 	protected List<Tree>[] trees;
 	protected int nChains;
+	public int getNumChains() {
+		return nChains;
+	}
 
 	protected int targetESS;
 	protected double smoothing;

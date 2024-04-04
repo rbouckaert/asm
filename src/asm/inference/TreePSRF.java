@@ -321,14 +321,9 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 		// Returns the log values that will be output to the ECCLogger file
 		Map<String, Double> logValues = new HashMap<>();
 
-		// Todo add the tree ESS values here? or somewhere else?
-		// Todo check whether the grValues each have been updated, if not no need to relog it?
-		//  this is because currently it only checks the first, if not within boundary it just goes on to the next
-		//  more efficient but harder to log sensibly
 		for (int i = 0; i < this.numChains; i++) {
 			logValues.put("GRT-" + i, this.grValues[i]);
 		}
-
 		return logValues;
 	}
 

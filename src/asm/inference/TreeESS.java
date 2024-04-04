@@ -17,7 +17,7 @@ import beastlabs.evolution.tree.RNNIMetric;
 public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
 	public Input<Double> smoothingInput = new Input<>("smoothing", "smoothing factor, which determines how proportion of trees to disregard: "
-			+ "larger smoothing means more trees included in test", 0.9);
+			+ "larger smoothing means more trees included in test", 1.0);
 
 	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
 			"Maximum size of the tree distance cache (default 1024). "
@@ -44,7 +44,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	@Override
 	public void initAndValidate() {
 		smoothing = smoothingInput.get();
-		if (smoothing < 0 || smoothing >= 1) {
+		if (smoothing < 0 || smoothing > 1) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
 		}
 

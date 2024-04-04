@@ -27,9 +27,9 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 
 	protected TraceInfo traceInfo;
 	protected List<Tree>[] trees;
-	protected int nChains;
+	protected int numChains;
 	public int getNumChains() {
-		return nChains;
+		return numChains;
 	}
 
 	protected int targetESS;
@@ -103,7 +103,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 		int start = (int)(end * (1.0-smoothing));
 		start = start - start % delta;
 
-		for (int i = 0; i < nChains; i++) {
+		for (int i = 0; i < numChains; i++) {
 			if (pseudoESS(i, start, end) < targetESS) {
 				return false;
 			}
@@ -192,7 +192,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 			traceInfo.distances = new DistanceMatrixCache(1024);
 		}
 		this.trees = traceInfo.trees;
-		this.nChains = nChains;
+		this.numChains = nChains;
 		if (nChains != 2) {
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
 		}

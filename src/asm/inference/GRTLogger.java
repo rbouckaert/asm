@@ -32,7 +32,12 @@ public class GRTLogger extends BEASTObject implements Loggable {
         int numChains = grt.getNumChains();
 
         for (int i = 0; i < numChains; i++) {
-            out.print(logValues.get("GRT-" + i) + "\t");
+            if (Double.isNaN((Double) logValues.get("GRT-" + i))) {
+                // todo this only happens in the check for sample 0 -- not sure why there is NaN
+                out.print("-2.0\t");
+            } else {
+                out.print(logValues.get("GRT-" + i) + "\t");
+            }
         }
     }
 

@@ -307,13 +307,13 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 			traceInfo.distances = new DistanceMatrixCache(1024);
 		}
 		this.trees = traceInfo.trees;
-		this.nChains = nChains;
+		this.numChains = nChains;
 		if (nChains != 2) {
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
 		}
 		// Initializing the grValues -- used for logging
 		this.grValues = new double[nChains];
-		// setting it to -2.0 indicating it has not been calcualted for later postprocessing
+		// setting it to -2.0 indicating it has not been calculated for later postprocessing
 		Arrays.fill(grValues, -2.0);
 	}
 
@@ -325,8 +325,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 		// Todo check whether the grValues each have been updated, if not no need to relog it?
 		//  this is because currently it only checks the first, if not within boundary it just goes on to the next
 		//  more efficient but harder to log sensibly
-		// todo why is there a NaN value in the beginning of the log?
-		for (int i = 0; i < this.nChains; i++) {
+		for (int i = 0; i < this.numChains; i++) {
 			logValues.put("GRT-" + i, this.grValues[i]);
 		}
 

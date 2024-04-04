@@ -15,6 +15,8 @@ import beast.base.core.Log;
 import beast.base.core.ProgramStatus;
 import beast.base.inference.Logger;
 import beast.base.inference.MCMC;
+import beast.base.evolution.alignment.Taxon;
+import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
@@ -460,6 +462,8 @@ public class AutoStopMCMC extends MCMC {
 
 
 
+	private TaxonSet taxonSet = null;
+	
 	/** read a single tree from the tree log file, return true if successful **/
 	boolean readTreeLogLine(int iThread, BufferedReader fin) {
 		String sStr = null;
@@ -478,14 +482,39 @@ public class AutoStopMCMC extends MCMC {
 					e.printStackTrace();
 				}
 			}
+			if (taxonSet == null && sStr.toLowerCase().trim().equals("translate")) {
+				List<Taxon> taxa = new ArrayList<>();
+				while (!sStr.contains(";")) {
+					try {
+						sStr = fin.readLine();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+					if (!sStr.contains(";")) {
+						sStr = sStr.trim();
+						sStr = sStr.split("\\s")[1];
+						if (sStr.endsWith(",")) {
+							sStr = sStr.substring(0, sStr.length() - 1);
+						}
+						taxa.add(new Taxon(sStr));
+					}
+				}
+				taxonSet = new TaxonSet(taxa);
+			}
 		} while (sStr == null || !sStr.matches("tree STATE.*")); // ignore non-tree lines
 
 		sStr = sStr.substring(sStr.indexOf("("));
 		TreeParser parser = new TreeParser();
+		parser.m_taxonset.setValue(taxonSet, parser);
 		parser.offsetInput.setValue(1, parser);
 		Node root = parser.parseNewick(sStr);
 		parser.setRoot(root);
 		Tree tree = parser.copy();
+		tree.m_taxonset.setValue(taxonSet, tree);
+		tree.initArrays();
+		for (int i = 0; i < tree.getLeafNodeCount(); i++) {
+			tree.getNode(i).setID(taxonSet.getTaxonId(i));
+		}
 		traceInfo.trees[iThread].add(tree);
 		return true;
 	} // readTreeLogLine

@@ -39,6 +39,15 @@ public class AutoStopMCMC extends MCMC {
     final public Input<List<Logger>> asmloggersInput =
             new Input<>("asmlogger", "loggers for reporting progress of stopping criteria", new ArrayList<>());
 
+
+	/** BurnIn strategy related stuff **/
+	public Input<String> burnInStrategy = new Input<>("burnInStrat", "How to calculate burnIn", "Automatic");
+
+//	public static final String DEFAULT_BURN_IN_STRATEGY = "Automatic";
+
+	private BurnInStrategy burnInStrat = BurnInStrategy.fromString(burnInStrategy.get());
+
+
 	/** plugins representing MCMC with model, loggers, etc **/
 	MCMCChain [] m_chains;
 	
@@ -76,7 +85,8 @@ public class AutoStopMCMC extends MCMC {
 			return;
 		}
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
-		
+		burnInStrat = BurnInStrategy.fromString(burnInStrategy.get());
+
 		asmloggers = new ArrayList<>();
 		asmloggers.addAll(asmloggersInput.get());
 		asmloggersInput.get().clear();
@@ -153,7 +163,7 @@ public class AutoStopMCMC extends MCMC {
 		long start = System.currentTimeMillis();
 		// memory for trees & tree distances
 		traceInfo = new TraceInfo(m_chains.length);
-		burnInDetector = new BurnInDetector(traceInfo);
+		burnInDetector = new BurnInDetector(traceInfo, burnInStrat);
 		
 		
         //if (restoreFromFile) {
@@ -381,7 +391,7 @@ public class AutoStopMCMC extends MCMC {
 			
 			boolean converged = true;
 			long start = System.currentTimeMillis();
-			int [] burnin = burnInDetector.burnIn(m_nLastReported);
+			int [] burnin = burnInDetector.burnIn(m_nLastReported);  // todo this is where burnin is called
 			Log.info.print("burnin:" + Arrays.toString(burnin));
 			for (MCMCConvergenceCriterion crit : stoppingCriteria) {
 				if (!crit.converged(burnin, m_nLastReported)) {

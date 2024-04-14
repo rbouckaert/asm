@@ -62,7 +62,7 @@ name="alignment">
 <map name="OneOnX" >beast.base.inference.distribution.OneOnX</map>
 
 
-<run id="mcmc" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2">
+<run id="mcmc" spec="asm.inference.AutoStopMCMC" chainLength="10000000" chains="2" burnInStrat="Automatic" combineLogs="true">
         <stoppingCriterion spec="asm.inference.GRLike" sampleSize="1" targetESS="2" cacheLimit="128" id="GRT"/>
         <stoppingCriterion spec="asm.inference.TraceESS" targetESS="100" />
 

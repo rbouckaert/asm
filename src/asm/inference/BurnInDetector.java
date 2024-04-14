@@ -10,16 +10,26 @@ import beast.base.core.Log;
 		+ "when running average starts to be inside mean +/- one stdev estimated on last quarter of trace")
 public class BurnInDetector {
 	TraceInfo traceInfo;
+	BurnInStrategy burnInStrat;
 		
-	public BurnInDetector(TraceInfo traceInfo) {
+	public BurnInDetector(TraceInfo traceInfo, BurnInStrategy burnInStrat) {
 		this.traceInfo = traceInfo;
+		this.burnInStrat = burnInStrat;
 	}
 	
 	public int [] burnIn(int end) {
 		int chainCount = traceInfo.chainCount();
 		int [] burnin = new int[chainCount];
-		for (int i = 0; i < chainCount; i++) {
-			burnin[i] = burnIn(i, end);
+
+		// calculate the burnin for each chain, based on the given strategy
+		if (burnInStrat.equals(BurnInStrategy.Automatic)) {
+			for (int i = 0; i < chainCount; i++) {
+				burnin[i] = burnIn(i, end);
+			}
+		} else if (burnInStrat.equals(BurnInStrategy.Running10)) {  // todo need to figure out how to set the value?
+			throw new IllegalArgumentException("Running burn in not yet implemented!");
+		} else {
+			throw new IllegalArgumentException("Unsupported BurnInStrategy: " + burnInStrat.toString());
 		}
 		return burnin;
 	}

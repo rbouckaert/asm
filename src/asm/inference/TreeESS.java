@@ -44,7 +44,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	@Override
 	public void initAndValidate() {
 		smoothing = smoothingInput.get();
-		if (smoothing < 0 || smoothing > 1) {
+		if (!(Double.compare(smoothing, 0.0) < 0 && Double.compare(1.0, smoothing) > 0)) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
 		}
 

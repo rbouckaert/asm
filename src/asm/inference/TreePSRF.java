@@ -53,8 +53,8 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 	@Override
 	public void initAndValidate() {
 		smoothing = smoothingInput.get();
-		if (smoothing < 0 || smoothing >= 1) {
-			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
+		if (!(Double.compare(smoothing, 0.0) >= 0 && Double.compare(1.0, smoothing) >= 0)) {
+			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing + " " + Double.compare(1.0, smoothing) + " " + Double.compare(smoothing, 0.0));
 		}
 
 		targetESS = targetESSInput.get();

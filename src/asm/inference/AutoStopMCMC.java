@@ -42,6 +42,7 @@ public class AutoStopMCMC extends MCMC {
 
 	/** BurnIn strategy related stuff **/
 	public Input<BurnInStrategy> burnInStrategy = new Input<>("burnInStrat", "How to calculate burnIn", BurnInStrategy.Automatic, BurnInStrategy.values());
+	public Input<Integer> burnInPercent = new Input<>("burnInPercent", "How much percent burnIn for Running", 10, Input.Validate.OPTIONAL);
 
 //	public static final String DEFAULT_BURN_IN_STRATEGY = "Automatic";
 
@@ -85,7 +86,11 @@ public class AutoStopMCMC extends MCMC {
 			return;
 		}
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
+
 		burnInStrat = burnInStrategy.get();
+		if (burnInPercent.get() != null) {
+			this.burnInStrat.setBurnInPercent(burnInPercent.get());
+		}
 
 		asmloggers = new ArrayList<>();
 		asmloggers.addAll(asmloggersInput.get());
@@ -111,7 +116,8 @@ public class AutoStopMCMC extends MCMC {
 		sXML = sXML.replaceAll("chains=[^ /]*", "");
 		sXML = sXML.replaceAll("targetESS=[^ /]*", "");
 		sXML = sXML.replaceAll("burnInStrat=[^ /]*", "");
-		
+		sXML = sXML.replaceAll("burnInPercent=[^ /]*", "");
+
 		String sMultiMCMC = this.getClass().getName();
 		while (sMultiMCMC.length() > 0) {
 			sXML = sXML.replaceAll("\\b"+sMultiMCMC+"\\b", MCMCChain.class.getName());

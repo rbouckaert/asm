@@ -41,7 +41,7 @@ public class AutoStopMCMC extends MCMC {
 
 
 	/** BurnIn strategy related stuff **/
-	public Input<String> burnInStrategy = new Input<>("burnInStrat", "How to calculate burnIn", "Automatic");
+	public Input<BurnInStrategy> burnInStrategy = new Input<>("burnInStrat", "How to calculate burnIn", BurnInStrategy.Automatic, BurnInStrategy.values());
 
 //	public static final String DEFAULT_BURN_IN_STRATEGY = "Automatic";
 
@@ -85,7 +85,7 @@ public class AutoStopMCMC extends MCMC {
 			return;
 		}
 		m_chains = new MCMCChain[nrOfChainsInput.get()];
-		burnInStrat = BurnInStrategy.fromString(burnInStrategy.get());
+		burnInStrat = burnInStrategy.get();
 
 		asmloggers = new ArrayList<>();
 		asmloggers.addAll(asmloggersInput.get());

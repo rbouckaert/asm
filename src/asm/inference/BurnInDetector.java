@@ -1,6 +1,7 @@
 package asm.inference;
 
 
+import java.util.Arrays;
 import java.util.List;
 
 import beast.base.core.Description;
@@ -26,10 +27,10 @@ public class BurnInDetector {
 			for (int i = 0; i < chainCount; i++) {
 				burnin[i] = burnIn(i, end);
 			}
-		} else if (burnInStrat.equals(BurnInStrategy.Running10)) {  // todo need to figure out how to set the value?
-			throw new IllegalArgumentException("Running burn in not yet implemented!");
-		} else {
-			throw new IllegalArgumentException("Unsupported BurnInStrategy: " + burnInStrat.toString());
+		} else if (burnInStrat.equals(BurnInStrategy.Running)) {
+			// calculating the float percentage of burning and filling the array of burnin accordingly
+			double burnPercent = (double) burnInStrat.getBurnInPercent()/100;
+            Arrays.fill(burnin, (int) Math.ceil(burnPercent * end));
 		}
 		return burnin;
 	}

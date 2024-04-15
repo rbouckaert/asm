@@ -45,7 +45,7 @@ public class AutoStopMCMC extends MCMC {
 
 //	public static final String DEFAULT_BURN_IN_STRATEGY = "Automatic";
 
-	private BurnInStrategy burnInStrat = BurnInStrategy.fromString(burnInStrategy.get());
+	private BurnInStrategy burnInStrat;
 
 
 	/** plugins representing MCMC with model, loggers, etc **/
@@ -110,6 +110,7 @@ public class AutoStopMCMC extends MCMC {
 		String sXML = new XMLProducer().toXML(this);
 		sXML = sXML.replaceAll("chains=[^ /]*", "");
 		sXML = sXML.replaceAll("targetESS=[^ /]*", "");
+		sXML = sXML.replaceAll("burnInStrat=[^ /]*", "");
 		
 		String sMultiMCMC = this.getClass().getName();
 		while (sMultiMCMC.length() > 0) {

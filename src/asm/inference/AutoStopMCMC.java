@@ -44,8 +44,6 @@ public class AutoStopMCMC extends MCMC {
 	public Input<BurnInStrategy> burnInStrategy = new Input<>("burnInStrat", "How to calculate burnIn", BurnInStrategy.Automatic, BurnInStrategy.values());
 	public Input<Integer> burnInPercent = new Input<>("burnInPercent", "How much percent burnIn for Running", 10, Input.Validate.OPTIONAL);
 
-//	public static final String DEFAULT_BURN_IN_STRATEGY = "Automatic";
-
 	private BurnInStrategy burnInStrat;
 
 

@@ -48,22 +48,22 @@ public class AutoStopMCMC extends MCMC {
 
 
 	/** plugins representing MCMC with model, loggers, etc **/
-	MCMCChain [] m_chains;
+	protected MCMCChain [] m_chains;
 	
 	/** threads for running MCMC chains **/
-	Thread [] m_threads;
+	protected Thread [] m_threads;
 	
 	/** keep track of time taken between logs to estimate speed **/
-    long m_nStartLogTime;
+	protected long m_nStartLogTime;
 	
 
-    TraceInfo traceInfo;
-    BurnInDetector burnInDetector;
+	protected TraceInfo traceInfo;
+	protected BurnInDetector burnInDetector;
 
 	
 	
 	/** last line for which log is reported for all chains */
-	int m_nLastReported = 0;
+	protected int m_nLastReported = 0;
 	
 	
 	
@@ -72,8 +72,8 @@ public class AutoStopMCMC extends MCMC {
 	
 
 	/** index of log and tree log among the MCMC loggers**/
-	int m_iTreeLog = 0;
-	int m_iLog = 0;
+	protected int m_iTreeLog = 0;
+	protected int m_iLog = 0;
 
 	
 	private boolean slept = false;
@@ -104,7 +104,10 @@ public class AutoStopMCMC extends MCMC {
 			Log.warning("=========================");
 		}
 		stoppingCriterionInput.get().clear();
-		
+		initChains();
+	} // initAndValidate
+	
+	protected void initChains() {
 		// the difference between the various chains is
 		// 1. it runs an MCMC, not an AutoStopMCMC
 		// 2. remove chains attribute
@@ -160,11 +163,11 @@ public class AutoStopMCMC extends MCMC {
 		if (nEveryLog != nEveryTree) {
 			throw new IllegalArgumentException("log frequency and tree log frequency should be the same.");
 		}
-	} // initAndValidate
+	} // initChains
 	
-	@SuppressWarnings("unchecked")
 	@Override 
 	public void run() throws IOException {
+		
 		long start = System.currentTimeMillis();
 		// memory for trees & tree distances
 		traceInfo = new TraceInfo(m_chains.length);

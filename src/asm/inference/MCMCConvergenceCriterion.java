@@ -27,6 +27,7 @@ public interface MCMCConvergenceCriterion {
 		return getClass().getSimpleName();
 	}
 
-	
-	// public void process(int chainNr, Double [] logLine, Node root);
+    public default void initAndValidate() {}
+
+    // public void process(int chainNr, Double [] logLine, Node root);
 }

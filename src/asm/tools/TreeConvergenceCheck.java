@@ -49,13 +49,15 @@ public class TreeConvergenceCheck extends Runnable {
 			return;
 		}
 
-		
 		for (int i = 0; i < n-1; i++) {
 			List<Tree> trees1 = getTrees(i);
 			for (int j = i + 1; j < n; j++) {
 				List<Tree> trees2 = getTrees(j);
 				TraceInfo traceInfo = new TraceInfo(2);
-				traceInfo.setTrees(trees1, trees2);
+				List<List<Tree>> treesList = new ArrayList<>();;
+				treesList.add(trees1);
+				treesList.add(trees2);
+				traceInfo.setTrees(treesList);
 				TreePSRF treePSRF = new TreePSRF();
 				treePSRF.initByName(
 						"smoothing", smoothingInput.get(), 

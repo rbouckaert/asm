@@ -73,9 +73,10 @@ public class TraceInfo {
 		return trees.length;
 	}
 
-	public void setTrees(List<Tree> trees1, List<Tree> trees2) {
-		trees[0] = trees1;
-		trees[1] = trees2;
+	public void setTrees(List<List<Tree>> treesList) {
+		for (int i = 0; i < treesList.size(); i++) {
+			trees[i] = treesList.get(i);
+		}
 	}
 
 	

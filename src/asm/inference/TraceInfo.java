@@ -79,6 +79,11 @@ public class TraceInfo {
 		}
 	}
 
+	public void setLogs(List<List<Double>> logList) {
+		for (int i =0; i < logList.size(); i++) {
+			logLines[i] = new List[]{logList.get(i)};
+		}
+	}
 	
 	String tracesString = null;
 	

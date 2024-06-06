@@ -1,109 +1,127 @@
 package asm.inference;
 
+import beast.base.evolution.tree.Tree;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import beast.base.evolution.tree.Tree;
-
-/** collection of data from pairs of trace logs and pairs of tree logs **/
+/**
+ * The collection of data from a set of trace logs and set of tree logs.
+ *
+ * @author Remco Bouckaert
+ */
 public class TraceInfo {
-	
-	public static DecimalFormat f = new DecimalFormat("#.###");
-	public static DecimalFormat f1 = new DecimalFormat("#.#");
 
-    /** tables of logs, one for each thread + one for the total**/
-	List<Double>[][] logLines;
-	
-	/** column labels of logLines **/
-	String [] labels;
-	
-    /** tables of trees, one for each thread + one for the total **/
-	List<Tree> [] trees;
+    public static DecimalFormat f = new DecimalFormat("#.###");
+    public static DecimalFormat f1 = new DecimalFormat("#.#");
 
-	DistanceMatrixCache distances;
-	
-	public List<Tree>[] getTrees() {
-		return trees;
-	}
-	
-	public TraceInfo(int chainCount) {
-		f.setMinimumFractionDigits(3);
-		f1.setMinimumFractionDigits(1);
+    /** tables of logs, one for each thread + one for the total */
+    List<Double>[][] logLines;
 
-		trees = new List[chainCount];
-		for (int i = 0; i < chainCount; i++) {
-			trees[i] = new ArrayList<>();
-		}
+    /** column labels of logLines */
+    String[] labels;
 
-		logLines = new List[chainCount][];
-	}
+    /** tables of trees, one for each thread + one for the total */
+    List<Tree>[] trees;
 
-	
-	// maps "posterior", "likelihood" and "prior" columns to logLine columns
-	private int [] map;
-	private static int [] DEFAULT_MAP = {1,2,3};
+    DistanceMatrixCache distances;
 
-	public int[] getMap() {
-		if (map != null) {
-			return map;
-		}
-		if (labels != null) {
-			setUpMap(tracesString);
-//			map = new int[3];
-//			map[0] = indexOf(labels, "posterior", 1);
-//			map[1] = indexOf(labels, "likelihood", 2);
-//			map[2] = indexOf(labels, "prior", 3);
-			return map;
-		}
-		return DEFAULT_MAP;
-	}
+    public TraceInfo(int chainCount) {
+        f.setMinimumFractionDigits(3);
+        f1.setMinimumFractionDigits(1);
 
-	private int indexOf(String[] labels, String string, int defaultIndex) {
-		for (int i = 0; i < labels.length; i++) {
-			if (labels[i].equals(string)) {
-				return i;
-			}
-		}
-		return defaultIndex;
-	}
+        trees = new List[chainCount];
+        for (int i = 0; i < chainCount; i++) {
+            trees[i] = new ArrayList<>();
+        }
 
-	public int chainCount() {
-		return trees.length;
-	}
+        logLines = new List[chainCount][];
+    }
 
-	public void setTrees(List<List<Tree>> treesList) {
-		for (int i = 0; i < treesList.size(); i++) {
-			trees[i] = treesList.get(i);
-		}
-	}
 
-	public void setLogs(List<List<Double>> logList) {
-		for (int i =0; i < logList.size(); i++) {
-			logLines[i] = new List[]{logList.get(i)};
-		}
-	}
-	
-	String tracesString = null;
-	
-	public void setUpMap(String tracesString) {
-		if (labels == null) {
-			this.tracesString = tracesString;
-			return;
-		}
-		String [] traces = tracesString.split(",");
+    // maps "posterior", "likelihood" and "prior" columns to logLine columns
+    private int[] map;
+    private static int[] DEFAULT_MAP = {1, 2, 3};
 
-		map = new int[traces.length];
-		int k = 0;
-		for (String trace : traces) {
-			map[k] = indexOf(labels, trace.trim(), -1);
-			if (map[k] == -1) {
-				throw new IllegalArgumentException("Could not find label " + trace + " in trace log. "
-						+ "Use one of " + Arrays.toString(labels));
-			}
-			k++;
-		}
-	}
+    private String[] traces;
+
+    String tracesString = null;
+
+    public int[] getMap() {
+        if (map != null) {
+            return map;
+        }
+        if (labels != null) {
+            setUpMap(tracesString);
+            // map = new int[3];
+            // map[0] = indexOf(labels, "posterior", 1);
+            // map[1] = indexOf(labels, "likelihood", 2);
+            // map[2] = indexOf(labels, "prior", 3);
+            return map;
+        }
+
+        traces = new String[]{"posterior", "likelihood", "prior"};
+        return DEFAULT_MAP;
+    }
+
+    public void setUpMap(String tracesString) {
+        if (labels == null) {
+            this.tracesString = tracesString;
+            return;
+        }
+
+        this.traces = tracesString.split(",");
+
+        map = new int[traces.length];
+        int k = 0;
+        for (String trace : traces) {
+            map[k] = indexOf(labels, trace.trim(), -1);
+            if (map[k] == -1) {
+                throw new IllegalArgumentException("Could not find label " + trace + " in trace log. "
+                        + "Use one of " + Arrays.toString(labels));
+            }
+            k++;
+        }
+    }
+
+    public String[] getTraceLabels() {
+        if (this.traces == null) {
+            getMap();
+        }
+
+        return this.traces;
+    }
+
+    private int indexOf(String[] labels, String string, int defaultIndex) {
+        for (int i = 0; i < labels.length; i++) {
+            if (labels[i].equals(string)) {
+                return i;
+            }
+        }
+        return defaultIndex;
+    }
+
+    public int chainCount() {
+        return trees.length;
+    }
+
+    public List<Tree>[] getTrees() {
+        return trees;
+    }
+
+    public void setTrees(List<List<Tree>> treesList) {
+        for (int i = 0; i < treesList.size(); i++) {
+            trees[i] = treesList.get(i);
+        }
+    }
+
+    public void setLogs(List<List<Double>> logList) {
+        for (int i = 0; i < logList.size(); i++) {
+            logLines[i] = new List[]{logList.get(i)};
+        }
+    }
+
 
 }

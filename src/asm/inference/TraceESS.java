@@ -15,6 +15,7 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
     public Input<String> tracesInput = new Input<>("traces", "comma separated string of trace entries to be tracked", "posterior,prior,likelihood");
 
     protected TraceInfo traceInfo;
+    /** Tables of logs, one for each thread; [chainIndex][attribute]{values} */
     protected List<Double>[][] logLines;
     protected int nChains;
     final static int MAX_LAG = 2000;
@@ -31,6 +32,10 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 
     @Override
     public boolean converged(int[] burnin, int end) {
+        return converged(burnin, end, true);
+    }
+
+    public boolean converged(int[] burnin, int end, boolean useMapping) {
         // calculate space requirement:
         int total = 0;
         for (int i = 0; i < nChains; i++) {
@@ -46,10 +51,11 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
         int[] map = traceInfo.getMap();
         this.currentESSs = new double[map.length];
         for (int j = 0; j < map.length; j++) {
+            int traceIndex = useMapping ? map[j] : j;
             int k = 0;
             for (int i = 0; i < nChains; i++) {
                 for (int x = burnin[i]; x < end; x++) {
-                    trace[k++] = logLines[i][map[j]].get(x);
+                    trace[k++] = logLines[i][traceIndex].get(x);
                 }
             }
             double ess = calcESS(trace, 0, total);

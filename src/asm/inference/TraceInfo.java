@@ -17,7 +17,7 @@ public class TraceInfo {
     public static DecimalFormat f = new DecimalFormat("#.###");
     public static DecimalFormat f1 = new DecimalFormat("#.#");
 
-    /** tables of logs, one for each thread + one for the total */
+    /** tables of logs, one for each thread + one for the total; [chainIndex][attribute]{values} */
     List<Double>[][] logLines;
 
     /** column labels of logLines */
@@ -62,6 +62,7 @@ public class TraceInfo {
             return map;
         }
 
+        // default case
         traces = new String[]{"posterior", "likelihood", "prior"};
         return DEFAULT_MAP;
     }
@@ -117,11 +118,8 @@ public class TraceInfo {
         }
     }
 
-    public void setLogs(List<List<Double>> logList) {
-        for (int i = 0; i < logList.size(); i++) {
-            logLines[i] = new List[]{logList.get(i)};
-        }
+    public void setLogs(List<Double>[][] logLines) {
+        this.logLines = logLines;
     }
-
 
 }

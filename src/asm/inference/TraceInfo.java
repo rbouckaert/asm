@@ -63,7 +63,7 @@ public class TraceInfo {
         }
 
         // default case
-        traces = new String[]{"posterior", "likelihood", "prior"};
+        this.traces = new String[]{"posterior", "likelihood", "prior"};
         return DEFAULT_MAP;
     }
 
@@ -122,4 +122,7 @@ public class TraceInfo {
         this.logLines = logLines;
     }
 
+    public void setLabels(String[] traceLabels) {
+        this.labels = traceLabels;
+    }
 }

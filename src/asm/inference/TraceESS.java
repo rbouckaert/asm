@@ -65,7 +65,6 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
         }
         Log.info.print(":" + TraceInfo.f1.format(minESS) + "\t");
 
-
         return minESS >= targetESS * nChains;
     }
 
@@ -190,7 +189,7 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
 
     /** @return a map of values to be logged */
     public Map<String, Double> getLogMap() {
-        String[] traces = traceInfo.getTraceLabels();
+        String[] traces = this.getTraceLabels();
         Map<String, Double> logValues = new HashMap<>(traces.length);
         for (int i = 0; i < traces.length; i++) {
             logValues.put(traces[i], currentESSs[i]);

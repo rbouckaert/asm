@@ -2,7 +2,9 @@ package asm.inference;
 
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
@@ -16,8 +18,9 @@ import beastlabs.evolution.tree.RNNIMetric;
 @Description("Tree ESS criterion for convergence based on trees alone")
 public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	public Input<Integer> targetESSInput = new Input<>("targetESS", "target effective sample size per chain (default 100)", 100);
-	public Input<Double> smoothingInput = new Input<>("smoothing", "smoothing factor, which determines how proportion of trees to disregard: "
-			+ "larger smoothing means more trees included in test", 1.0);
+	public Input<Double> smoothingInput = new Input<>("smoothing",
+			"smoothing factor, which determines how proportion of trees to disregard: "
+			+ "1.0 means all trees are included, 0.9 would mean 10% burnin discarded.", 1.0);
 
 	public Input<Integer> cacheLimitInput = new Input<>("cacheLimit", 
 			"Maximum size of the tree distance cache (default 1024). "
@@ -39,12 +42,14 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 	// delta = gap between sampled trees due to cache pruning
 	protected int delta = 1;
 	protected int N;
-	
-	
+
+	// For logging values:
+	private double[] treeEssValues;
+
 	@Override
 	public void initAndValidate() {
 		smoothing = smoothingInput.get();
-		if (!(Double.compare(smoothing, 0.0) < 0 && Double.compare(1.0, smoothing) > 0)) {
+		if (Double.compare(smoothing, 0.0) < 0 || Double.compare(1.0, smoothing) > 0) {
 			throw new IllegalArgumentException("smoothing should be between 0 and 1, not " + smoothing);
 		}
 
@@ -96,7 +101,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 //					indices[i] = indices[i] - indices[i] % delta;
 //				}
 //			}
-			Log.warning("TreeESS Delta=" + delta);	
+			Log.debug("TreeESS Delta=" + delta);
 			return converged(burnin, end);
 		}
 
@@ -104,7 +109,11 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 		start = start - start % delta;
 
 		for (int i = 0; i < numChains; i++) {
-			if (pseudoESS(i, start, end) < targetESS) {
+			double curEss = pseudoESS(i, start, end);
+			Log.debug("Current ESS was calculated: " + curEss);
+			// Logging the value
+			this.treeEssValues[i] = curEss;
+			if (curEss < targetESS) {
 				return false;
 			}
 		}
@@ -131,8 +140,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 			}
 		}
 
-		
-		System.out.println(Arrays.toString(indices));
+		Log.debug(Arrays.toString(indices));
 		// calc sum of distances to the trees with index from `indices`
 		Double [][] trace = new Double[N][(cutEnd-cutStart)/delta];
 		int [] k = new int[N];
@@ -160,8 +168,7 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 			sum +=d;
 		}
 		double meanESS = sum / N;
-		
-		Log.info.print("pseudoESS = " + traceInfo.f1.format(meanESS) + " ");
+		Log.debug.print("pseudoESS = " + traceInfo.f1.format(meanESS) + " ");
 		return meanESS;
 	}
 
@@ -196,9 +203,18 @@ public class TreeESS extends BEASTObject implements MCMCConvergenceCriterion {
 		if (nChains != 2) {
 			throw new IllegalArgumentException("Only 2 chains can be handled by " + this.getClass().getName() + ", not " + nChains);
 		}
+
+		// Init for logging
+		this.treeEssValues = new double[nChains];
+		Arrays.fill(treeEssValues, -2.0);
 	}
 
+	public Map getLog() {
+		Map<String, Double> logValues = new HashMap<>();
 
-
-
+		for (int i = 0; i < this.numChains; i++) {
+			logValues.put("TreeESS-" + i, this.treeEssValues[i]);
+		}
+		return logValues;
+	}
 }

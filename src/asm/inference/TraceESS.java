@@ -61,9 +61,9 @@ public class TraceESS extends BEASTObject implements MCMCConvergenceCriterion {
             double ess = calcESS(trace, 0, total);
             currentESSs[j] = ess;
             minESS = Math.min(ess, minESS);
-            Log.info.print(TraceInfo.f1.format(ess) + " ");
+            Log.debug.print(TraceInfo.f1.format(ess) + " ");
         }
-        Log.info.print(":" + TraceInfo.f1.format(minESS) + "\t");
+        Log.debug.print(":" + TraceInfo.f1.format(minESS) + "\t");
 
         return minESS >= targetESS * nChains;
     }

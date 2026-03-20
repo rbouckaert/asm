@@ -119,7 +119,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 	
 			if (end/delta > cacheLimit) {
 				delta *= 2;
-				Log.warning("Delta=" + delta);	
+				Log.debug("Delta=" + delta);
 				return converged(burnin, end);
 			}
 
@@ -146,7 +146,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 			this.grValues[0] = psrf1mean; // Setting the value for logging
 			double psrf2mean = 0;
 			
-			Log.info.print("psrf1mean = " + traceInfo.f.format(psrf1mean) + " ");
+			Log.debug.print("psrf1mean = " + traceInfo.f.format(psrf1mean) + " ");
 			if (lower < psrf1mean && psrf1mean < upper) {
 				if (start0 < 0) {
 					start0 = start;
@@ -156,7 +156,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 				}
 				psrf2mean = mean(psrf);
 				this.grValues[1] = psrf2mean; // Setting the value for logging
-				Log.info.print("psrf2mean = " + traceInfo.f.format(psrf2mean)+ " ");
+				Log.debug.print("psrf2mean = " + traceInfo.f.format(psrf2mean)+ " ");
 				
 				if (lower < psrf2mean && psrf2mean < upper) {
 					if (!checkESS) {
@@ -166,7 +166,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 	    			// (end-start)/delta - 1 trees (the tree to compare with is removed from the sequence), 
 	    			// so we need at least one more tree to make the pseudoESS >= targetESS
 	    			if ((end - start0) <= targetESS) {
-	    				Log.info.print("not enough samples ");
+	    				Log.debug.print("not enough samples ");
 	    				return false;
 	    			}
 	                int cutStart = start0; 
@@ -182,7 +182,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 				}
 			}
 			if (lower <= psrf1mean || psrf1mean >= upper || lower <= psrf2mean || psrf2mean >= upper) {
-				Log.info.print("reset start ");
+				Log.debug.print("reset start ");
 				start0 = -1;
 			}
 		} catch (Throwable e) {
@@ -212,7 +212,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 			
 			if (end/delta > cacheLimit) {
 				delta *= 2;
-				Log.warning("Delta=" + delta);	
+				Log.debug("Delta=" + delta);
 				return converged(burnin, end);
 			}
 
@@ -223,7 +223,7 @@ public class TreePSRF extends TreeESS implements MCMCConvergenceCriterion {
 			double psrf1mean = mean(psrf);
 			this.grValues[0] = psrf1mean; // Setting the value for logging
 			
-			Log.info("\npsrf1mean = " + psrf1mean);
+			Log.debug("\npsrf1mean = " + psrf1mean);
 			if (lower < psrf1mean && psrf1mean < upper) {
 				if (!checkESS) {
 					return true;

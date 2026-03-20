@@ -26,7 +26,7 @@ public class DistanceMatrixCache {
 	float getDistance(int treeSet1, int index1, int treeSet2, int index2) {
 		if (index1 >= size || index2 >= size) {
 			// resize
-			Log.warning("Resizing cache from " + size + " to " + (size+1024));
+			Log.debug("Resizing cache from " + size + " to " + (size+1024));
 			size += 1024;
 			cache11 = Arrays.copyOf(cache11, size*(size-1)/2);
 			cache22 = Arrays.copyOf(cache22, size*(size-1)/2);

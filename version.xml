@@ -1,29 +1,29 @@
 <package name='ASM' version='0.0.1'>
-	<depends on='BEAST.base' atleast='2.7.5'/>
-	<depends on='BEAST.app' atleast='2.7.5'/>
-	<depends on='BEASTLabs' atleast='2.0.0'/>
+    <depends on='BEAST.base' atleast='2.7.5'/>
+    <depends on='BEAST.app' atleast='2.7.5'/>
+    <depends on='BEASTLabs' atleast='2.0.0'/>
 
-            
-        <service type="beast.base.core.BEASTInterface">
-                <provider classname="asm.inference.AutoStopMCMC"/>
-                <provider classname="asm.inference.MCMCChain"/>
-                <provider classname="asm.inference.GelmanRubin"/>
-                <provider classname="asm.inference.CladeDifference"/>
-                <provider classname="asm.inference.TreePSRF"/>
-                <provider classname="asm.inference.TreeESS"/>
-                <provider classname="asm.inference.TraceESS"/>
-                <provider classname="asm.inference.GRTLogger"/>
-    	</service>
-    	
-  <packageapp description="ASM chain monitor"
-              class="asm.tools.Monitor"
-              args=""
-            />
-  <packageapp description="Tree Convergence Check"
-              class="asm.tools.TreeConvergenceCheck"
-              args=""
-            />
+    <service type="beast.base.core.BEASTInterface">
+        <provider classname="asm.inference.AutoStopMCMC"/>
+        <provider classname="asm.inference.MCMCChain"/>
+        <provider classname="asm.inference.GelmanRubin"/>
+        <provider classname="asm.inference.CladeDifference"/>
+        <provider classname="asm.inference.TreePSRF"/>
+        <provider classname="asm.inference.TreeESS"/>
+        <provider classname="asm.inference.TraceESS"/>
+        <provider classname="asm.inference.GRTLogger"/>
+        <provider classname="asm.inference.ChaoJaccard"/>
+    </service>
+
+    <packageapp description="ASM chain monitor"
+                class="asm.tools.Monitor"
+                args=""
+    />
+    <packageapp description="Tree Convergence Check"
+                class="asm.tools.TreeConvergenceCheck"
+                args=""
+    />
 
 
-	<map from="asm.inference.GRLike" to="asm.inference.TreePSRF"/>
+    <map from="asm.inference.GRLike" to="asm.inference.TreePSRF"/>
 </package>

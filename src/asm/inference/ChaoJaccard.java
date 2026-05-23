@@ -1,23 +1,30 @@
 package asm.inference;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 
+import java.util.*;
+
 @Description("Convergence criterion based on incidence-based Chao-Jaccard similarity " +
         "of features between chains (Chao et al. 2005, Ecology Letters 8:148-159). " +
         "Treats each tree as a sampling unit and each clade (or split) as a species. " +
         "Estimates true Jaccard similarity accounting for unseen shared features.")
 public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion {
+
+    // For logging and accessing logs
+    public static final class Keys {
+
+        private Keys() {
+        }
+
+        public static final String CHAIN_MIN = "Chao-Chain-min";
+        public static final String PAIR = "Chao-pair";
+        public static final String GLOBAL_MIN = "Chao-global-min";
+    }
+
 
     public Input<Double> thresholdInput = new Input<>("threshold",
             "Chao-Jaccard similarity above which chains are considered converged", 0.99);
@@ -29,28 +36,60 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
     private int nChains;
     private List<Tree>[] trees;
 
-    /** feature incidence maps: feature string -> number of trees containing it */
+    /**
+     * feature incidence maps: feature string -> number of trees containing it
+     */
     private Map<String, Integer>[] featureMaps;
 
-    /** number of trees processed per chain (T_A, T_B) */
+    /**
+     * number of trees processed per chain (T_A, T_B)
+     */
     private int[] numTrees;
 
-    /** total feature incidences per chain (n_+, m_+) */
+    /**
+     * total feature incidences per chain (n_+, m_+)
+     */
     private int[] totalIncidence;
 
     private boolean useSplits;
     private int current = 0;
 
+    // Logging tools
+    private double[][] pairwiseSimilarity;
+    private double[] chainMinSimilarity;
+    private double globalMinSimilarity;
+    public FeatureLevel featureLevel;
+
+    public enum FeatureLevel {
+        CLADE,
+        SPLIT
+    }
+
     @Override
     public void initAndValidate() {
         threshold = thresholdInput.get();
-        String level = featureLevelInput.get().toLowerCase();
-        useSplits = level.equals("split") || level.equals("ccd1");
+        String levelInput = featureLevelInput.get().toUpperCase();
+
+        try {
+            this.featureLevel = FeatureLevel.valueOf(levelInput);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Unkown featureLevel: " + featureLevelInput.get() +
+                            ". Expected clade or split"
+            );
+        }
+
+        useSplits = (featureLevel == FeatureLevel.SPLIT);
     }
 
     @Override
     public void setup(int nChains, TraceInfo traceInfo) {
         this.nChains = nChains;
+
+        pairwiseSimilarity = new double[nChains][nChains];
+        chainMinSimilarity = new double[nChains];
+        globalMinSimilarity = Double.POSITIVE_INFINITY;
+
         this.trees = traceInfo.trees;
         this.featureMaps = new Map[nChains];
         this.numTrees = new int[nChains];
@@ -78,31 +117,78 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
         current = available;
 
         // compute minimum pairwise Chao-Jaccard similarity
-        double minSimilarity = 1.0;
+        // 1. compute pairwise
         for (int i = 0; i < nChains; i++) {
             for (int j = i + 1; j < nChains; j++) {
+
                 double cj = chaoJaccardIncidence(
                         featureMaps[i], totalIncidence[i], numTrees[i],
                         featureMaps[j], totalIncidence[j], numTrees[j]);
-                minSimilarity = Math.min(minSimilarity, cj);
+
+                pairwiseSimilarity[i][j] = cj;
+                pairwiseSimilarity[j][i] = cj;
+
+                globalMinSimilarity = Math.min(globalMinSimilarity, cj);
             }
         }
-        return minSimilarity >= threshold;
+
+        // 2. compute per-chain minima
+        for (int i = 0; i < nChains; i++) {
+            chainMinSimilarity[i] = Double.POSITIVE_INFINITY;
+
+            for (int j = 0; j < nChains; j++) {
+                if (i != j) {
+                    chainMinSimilarity[i] =
+                            Math.min(chainMinSimilarity[i], pairwiseSimilarity[i][j]);
+                }
+            }
+        }
+        return globalMinSimilarity >= threshold;
+    }
+
+    // TODO implement logger for when running xmls, WIP, see dissonance for example
+//    public Map<String, Double> getLogMap() {
+//        Map<String, Double> log = new HashMap<>();
+//
+//        // per-chain minima (like entropy per chain)
+//        for (int i = 0; i < nChains; i++) {
+//            log.put(Keys.CHAIN_MIN + i, chainMinSimilarity[i]);
+//        }
+//
+//        // pairwise values (optional but powerful)
+//        for (int i = 0; i < nChains; i++) {
+//            for (int j = i + 1; j < nChains; j++) {
+//                log.put(Keys.PAIR + i + "-" + j, pairwiseSimilarity[i][j]);
+//            }
+//        }
+//
+//        // global summary
+//        log.put(Keys.GLOBAL_MIN, globalMinSimilarity);
+//
+//        return log;
+//    }
+
+    public double getGlobalMinSimilarity() {
+        return globalMinSimilarity;
+    }
+
+    public double getChainMinSimilarity(int i) {
+        return chainMinSimilarity[i];
     }
 
     /**
      * Compute the incidence-based Chao-Jaccard similarity estimator
      * (Chao et al. 2005, Ecology Letters 8:148-159, equations 11-13).
-     *
+     * <p>
      * Each tree is a sampling unit, each feature (clade or split) is a
      * "species". X_i is the number of trees in run A containing feature i.
      *
-     * @param mapA feature incidence counts for run A
+     * @param mapA  feature incidence counts for run A
      * @param nPlus total feature incidences in A (= T_A * features per tree)
-     * @param tA number of trees in run A
-     * @param mapB feature incidence counts for run B
+     * @param tA    number of trees in run A
+     * @param mapB  feature incidence counts for run B
      * @param mPlus total feature incidences in B (= T_B * features per tree)
-     * @param tB number of trees in run B
+     * @param tB    number of trees in run B
      * @return estimated Jaccard similarity
      */
     static double chaoJaccardIncidence(Map<String, Integer> mapA, int nPlus, int tA,

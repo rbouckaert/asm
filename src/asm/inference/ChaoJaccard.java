@@ -20,9 +20,7 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
         private Keys() {
         }
 
-        public static final String CHAIN_MIN = "Chao-Chain-min";
-        public static final String PAIR = "Chao-pair";
-        public static final String GLOBAL_MIN = "Chao-global-min";
+        public static final String GLOBAL_MIN = "ChaoJaccard";
     }
 
 
@@ -55,8 +53,6 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
     private int current = 0;
 
     // Logging tools
-    private double[][] pairwiseSimilarity;
-    private double[] chainMinSimilarity;
     private double globalMinSimilarity;
     public FeatureLevel featureLevel;
 
@@ -86,8 +82,6 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
     public void setup(int nChains, TraceInfo traceInfo) {
         this.nChains = nChains;
 
-        pairwiseSimilarity = new double[nChains][nChains];
-        chainMinSimilarity = new double[nChains];
         globalMinSimilarity = Double.POSITIVE_INFINITY;
 
         this.trees = traceInfo.trees;
@@ -125,55 +119,15 @@ public class ChaoJaccard extends BEASTObject implements MCMCConvergenceCriterion
                         featureMaps[i], totalIncidence[i], numTrees[i],
                         featureMaps[j], totalIncidence[j], numTrees[j]);
 
-                pairwiseSimilarity[i][j] = cj;
-                pairwiseSimilarity[j][i] = cj;
-
                 globalMinSimilarity = Math.min(globalMinSimilarity, cj);
             }
         }
 
-        // 2. compute per-chain minima
-        for (int i = 0; i < nChains; i++) {
-            chainMinSimilarity[i] = Double.POSITIVE_INFINITY;
-
-            for (int j = 0; j < nChains; j++) {
-                if (i != j) {
-                    chainMinSimilarity[i] =
-                            Math.min(chainMinSimilarity[i], pairwiseSimilarity[i][j]);
-                }
-            }
-        }
         return globalMinSimilarity >= threshold;
     }
 
-    // TODO implement logger for when running xmls, WIP, see dissonance for example
-//    public Map<String, Double> getLogMap() {
-//        Map<String, Double> log = new HashMap<>();
-//
-//        // per-chain minima (like entropy per chain)
-//        for (int i = 0; i < nChains; i++) {
-//            log.put(Keys.CHAIN_MIN + i, chainMinSimilarity[i]);
-//        }
-//
-//        // pairwise values (optional but powerful)
-//        for (int i = 0; i < nChains; i++) {
-//            for (int j = i + 1; j < nChains; j++) {
-//                log.put(Keys.PAIR + i + "-" + j, pairwiseSimilarity[i][j]);
-//            }
-//        }
-//
-//        // global summary
-//        log.put(Keys.GLOBAL_MIN, globalMinSimilarity);
-//
-//        return log;
-//    }
-
     public double getGlobalMinSimilarity() {
         return globalMinSimilarity;
-    }
-
-    public double getChainMinSimilarity(int i) {
-        return chainMinSimilarity[i];
     }
 
     /**
